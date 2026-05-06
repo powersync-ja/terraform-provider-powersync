@@ -1,0 +1,14 @@
+# Local dev override — tells Terraform to use your locally built provider binary
+# instead of downloading from the registry.
+#
+# Usage:
+#   TF_CLI_CONFIG_FILE=dev.tfrc terraform plan
+#
+# The path here is where `go install .` puts the binary (default GOBIN).
+# If your GOBIN is different, run `go env GOBIN` to check.
+provider_installation {
+  dev_overrides {
+    "powersync/powersync" = "/Users/amine/go/bin"
+  }
+  direct {}
+}

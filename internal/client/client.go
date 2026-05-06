@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+// managementEnvelope is the response wrapper used by the management API.
+type managementEnvelope struct {
+	Data json.RawMessage `json:"data"`
+}
+
 type Client struct {
 	accountsURL   string
 	managementURL string
@@ -98,4 +103,28 @@ func (c *Client) managementPost(ctx context.Context, path string, body, out any)
 // managementGet targets the management API with GET.
 func (c *Client) managementGet(ctx context.Context, path string, out any) error {
 	return c.doRequest(ctx, http.MethodGet, c.managementURL+path, nil, out)
+}
+
+// managementPostData is like managementPost but unwraps the {"data": ...} response envelope.
+func (c *Client) managementPostData(ctx context.Context, path string, body, out any) error {
+	var wrapper managementEnvelope
+	if err := c.managementPost(ctx, path, body, &wrapper); err != nil {
+		return err
+	}
+	if out != nil && len(wrapper.Data) > 0 {
+		return json.Unmarshal(wrapper.Data, out)
+	}
+	return nil
+}
+
+// managementGetData is like managementGet but unwraps the {"data": ...} response envelope.
+func (c *Client) managementGetData(ctx context.Context, path string, out any) error {
+	var wrapper managementEnvelope
+	if err := c.managementGet(ctx, path, &wrapper); err != nil {
+		return err
+	}
+	if out != nil && len(wrapper.Data) > 0 {
+		return json.Unmarshal(wrapper.Data, out)
+	}
+	return nil
 }
