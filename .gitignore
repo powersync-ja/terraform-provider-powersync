@@ -1,0 +1,13 @@
+# Go build output
+terraform-provider-powersync
+
+# Terraform local state and cache
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/terraform.tfvars
+
+# Release artifacts
+dist/
+.env
