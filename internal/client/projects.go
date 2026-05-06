@@ -4,8 +4,12 @@ import "context"
 
 // Project represents a PowerSync project (called "app" in the API).
 type Project struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	DefaultRegion string `json:"default_region"`
+	VCSMode       string `json:"vcs_mode"`
+	Trial         bool   `json:"trial"`
+	Locked        bool   `json:"locked"`
 }
 
 type listProjectsRequest struct {
@@ -19,27 +23,31 @@ type listProjectsResponse struct {
 	Total   int       `json:"total"`
 }
 
+type listProjectsAPIResponse struct {
+	Data listProjectsResponse `json:"data"`
+}
+
 func (c *Client) ListProjects(ctx context.Context, orgID string) ([]Project, error) {
 	req := listProjectsRequest{OrgID: &orgID, Limit: 100}
-	var out listProjectsResponse
+	var out listProjectsAPIResponse
 	if err := c.post(ctx, "/api/accounts/v5/apps/list", req, &out); err != nil {
 		return nil, err
 	}
-	return out.Objects, nil
+	return out.Data.Objects, nil
 }
 
 // GetProjectByID filters the apps/list endpoint by org + id.
 // Returns nil, nil when no match is found.
 func (c *Client) GetProjectByID(ctx context.Context, orgID, id string) (*Project, error) {
 	req := listProjectsRequest{OrgID: &orgID, ID: &id, Limit: 1}
-	var out listProjectsResponse
+	var out listProjectsAPIResponse
 	if err := c.post(ctx, "/api/accounts/v5/apps/list", req, &out); err != nil {
 		return nil, err
 	}
-	if len(out.Objects) == 0 {
+	if len(out.Data.Objects) == 0 {
 		return nil, nil
 	}
-	return &out.Objects[0], nil
+	return &out.Data.Objects[0], nil
 }
 
 // GetProjectByName fetches the full project list and returns the first name match.

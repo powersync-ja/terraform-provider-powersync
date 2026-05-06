@@ -11,3 +11,4 @@ terraform-provider-powersync
 # Release artifacts
 dist/
 .env
+.envrc

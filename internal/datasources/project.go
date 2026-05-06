@@ -17,9 +17,13 @@ type ProjectDataSource struct {
 }
 
 type projectModel struct {
-	OrgID types.String `tfsdk:"org_id"`
-	ID    types.String `tfsdk:"id"`
-	Name  types.String `tfsdk:"name"`
+	OrgID         types.String `tfsdk:"org_id"`
+	ID            types.String `tfsdk:"id"`
+	Name          types.String `tfsdk:"name"`
+	DefaultRegion types.String `tfsdk:"default_region"`
+	VCSMode       types.String `tfsdk:"vcs_mode"`
+	Trial         types.Bool   `tfsdk:"trial"`
+	Locked        types.Bool   `tfsdk:"locked"`
 }
 
 func NewProjectDataSource() datasource.DataSource {
@@ -47,6 +51,22 @@ func (d *ProjectDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				Optional:    true,
 				Computed:    true,
 				Description: "Project name.",
+			},
+			"default_region": schema.StringAttribute{
+				Computed:    true,
+				Description: "Default region for instances created in this project (e.g. \"eu\", \"us\").",
+			},
+			"vcs_mode": schema.StringAttribute{
+				Computed:    true,
+				Description: "Version control mode for sync rules. BASIC means rules are managed via the dashboard/API; GIT means rules are sourced from a git repository.",
+			},
+			"trial": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether the project is on a trial plan.",
+			},
+			"locked": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether the project is locked.",
 			},
 		},
 	}
@@ -109,5 +129,9 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	state.ID = types.StringValue(proj.ID)
 	state.Name = types.StringValue(proj.Name)
+	state.DefaultRegion = types.StringValue(proj.DefaultRegion)
+	state.VCSMode = types.StringValue(proj.VCSMode)
+	state.Trial = types.BoolValue(proj.Trial)
+	state.Locked = types.BoolValue(proj.Locked)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }

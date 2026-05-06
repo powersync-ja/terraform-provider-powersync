@@ -11,9 +11,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/powersync/terraform-provider-powersync/internal/client"
 	"github.com/powersync/terraform-provider-powersync/internal/datasources"
+	"github.com/powersync/terraform-provider-powersync/internal/resources"
 )
 
-const defaultAccountsURL = "https://accounts.powersync.com"
+const (
+	defaultAccountsURL   = "https://accounts.powersync.com"
+	defaultManagementURL = "https://powersync-api.journeyapps.com"
+)
 
 var _ provider.Provider = &PowerSyncProvider{}
 
@@ -22,8 +26,9 @@ type PowerSyncProvider struct {
 }
 
 type providerModel struct {
-	AdminToken  types.String `tfsdk:"admin_token"`
-	AccountsURL types.String `tfsdk:"accounts_url"`
+	AdminToken    types.String `tfsdk:"admin_token"`
+	AccountsURL   types.String `tfsdk:"accounts_url"`
+	ManagementURL types.String `tfsdk:"management_url"`
 }
 
 func New(version string) func() provider.Provider {
@@ -44,11 +49,15 @@ func (p *PowerSyncProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 			"admin_token": schema.StringAttribute{
 				Optional:    true,
 				Sensitive:   true,
-				Description: "PowerSync admin token. Can also be set via the PS_ADMIN_TOKEN environment variable.",
+				Description: "PowerSync personal access token. Can also be set via the PS_PAT_TOKEN environment variable.",
 			},
 			"accounts_url": schema.StringAttribute{
 				Optional:    true,
 				Description: "PowerSync accounts service URL. Defaults to https://accounts.powersync.com. Override for staging.",
+			},
+			"management_url": schema.StringAttribute{
+				Optional:    true,
+				Description: "PowerSync management API URL. Defaults to https://powersync-api.journeyapps.com. Override for staging.",
 			},
 		},
 	}
@@ -61,14 +70,14 @@ func (p *PowerSyncProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	token := os.Getenv("PS_ADMIN_TOKEN")
+	token := os.Getenv("PS_PAT_TOKEN")
 	if !config.AdminToken.IsNull() && !config.AdminToken.IsUnknown() {
 		token = config.AdminToken.ValueString()
 	}
 	if token == "" {
 		resp.Diagnostics.AddError(
 			"Missing admin token",
-			"Set the admin_token provider attribute or the PS_ADMIN_TOKEN environment variable.",
+			"Set the admin_token provider attribute or the PS_PAT_TOKEN environment variable.",
 		)
 		return
 	}
@@ -78,7 +87,12 @@ func (p *PowerSyncProvider) Configure(ctx context.Context, req provider.Configur
 		accountsURL = config.AccountsURL.ValueString()
 	}
 
-	c := client.New(accountsURL, token)
+	managementURL := defaultManagementURL
+	if !config.ManagementURL.IsNull() && !config.ManagementURL.IsUnknown() {
+		managementURL = config.ManagementURL.ValueString()
+	}
+
+	c := client.New(accountsURL, managementURL, token)
 	resp.DataSourceData = c
 	resp.ResourceData = c
 }
@@ -91,5 +105,7 @@ func (p *PowerSyncProvider) DataSources(_ context.Context) []func() datasource.D
 }
 
 func (p *PowerSyncProvider) Resources(_ context.Context) []func() resource.Resource {
-	return nil
+	return []func() resource.Resource{
+		resources.NewInstanceResource,
+	}
 }

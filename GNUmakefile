@@ -20,7 +20,7 @@ lint:
 test:
 	go test ./... -v -timeout 120s
 
-# Acceptance tests hit the real API — requires PS_ADMIN_TOKEN to be set.
+# Acceptance tests hit the real API — requires PS_PAT_TOKEN to be set.
 testacc:
 	TF_ACC=1 go test ./... -v -run TestAcc -timeout 600s
 
