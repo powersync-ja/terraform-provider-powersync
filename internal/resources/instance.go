@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -41,10 +43,17 @@ type instanceModel struct {
 	Region                 types.String         `tfsdk:"region"`
 	SyncConfigContent      types.String         `tfsdk:"sync_config_content"`
 	Status                 types.String         `tfsdk:"status"`
+	Provisioned            types.Bool           `tfsdk:"provisioned"`
 	InstanceURL            types.String         `tfsdk:"instance_url"`
+	Operations             []operationModel     `tfsdk:"operations"`
 	ReplicationConnections []connectionModel    `tfsdk:"replication_connection"`
 	ClientAuth             []clientAuthModel    `tfsdk:"client_auth"`
 	ProgramVersion         []programVersionModel `tfsdk:"program_version"`
+}
+
+type operationModel struct {
+	ID     types.String `tfsdk:"id"`
+	Status types.String `tfsdk:"status"`
 }
 
 type connectionModel struct {
@@ -133,9 +142,16 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"status": schema.StringAttribute{
 				Computed:    true,
-				Description: "Current instance status.",
+				Description: "Derived status: \"deploying\" while an operation is pending/running, \"active\" once the instance has a URL, otherwise \"provisioning\".",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"provisioned": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether sync rules have been deployed to this instance. Despite the name, this is not a liveness signal — use `status` or `instance_url` for that.",
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"instance_url": schema.StringAttribute{
@@ -143,6 +159,25 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Description: "Public endpoint URL of the instance.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"operations": schema.ListNestedAttribute{
+				Computed:    true,
+				Description: "In-flight or recently completed deploy operations on the instance.",
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"id": schema.StringAttribute{
+							Computed:    true,
+							Description: "Operation ID.",
+						},
+						"status": schema.StringAttribute{
+							Computed:    true,
+							Description: "Operation status: pending, running, completed, or failed.",
+						},
+					},
 				},
 			},
 		},
@@ -317,7 +352,9 @@ func (r *InstanceResource) Create(ctx context.Context, req resource.CreateReques
 	plan.ID = types.StringValue(instanceID)
 	plan.Region = types.StringValue(region)
 	plan.Status = types.StringNull()
+	plan.Provisioned = types.BoolNull()
 	plan.InstanceURL = types.StringNull()
+	plan.Operations = []operationModel{}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -522,12 +559,24 @@ func (r *InstanceResource) refreshStatus(ctx context.Context, state *instanceMod
 		diags.AddWarning("Could not read instance status", err.Error())
 		return
 	}
-	if status.Provisioned {
-		state.Status = types.StringValue("active")
-	} else {
-		state.Status = types.StringValue("provisioning")
-	}
+	state.Status = types.StringValue(status.DeriveStatus())
+	state.Provisioned = types.BoolValue(status.Provisioned)
 	state.InstanceURL = stringOrNull(status.InstanceURL)
+	state.Operations = operationsFromAPI(status.Operations)
+}
+
+func operationsFromAPI(ops []client.DeployOperation) []operationModel {
+	if len(ops) == 0 {
+		return []operationModel{}
+	}
+	result := make([]operationModel, len(ops))
+	for i, op := range ops {
+		result[i] = operationModel{
+			ID:     types.StringValue(op.ID),
+			Status: types.StringValue(op.Status),
+		}
+	}
+	return result
 }
 
 func buildDeployRequest(plan instanceModel, instanceID, orgID, projectID string) client.DeployInstanceRequest {

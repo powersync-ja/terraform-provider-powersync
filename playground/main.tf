@@ -35,6 +35,12 @@ data "powersync_project" "terraform_project" {
   id     = local.project_id
 }
 
+# ── Projects (list data source) ────────────────────────────────────────────────
+
+data "powersync_projects" "all" {
+  org_id = data.powersync_organization.main.id
+}
+
 # ── Instance ─────────────────────────────────────────────────────────────────────
 
 resource "powersync_instance" "terraform_instance" {
@@ -65,4 +71,12 @@ resource "powersync_instance" "terraform_instance" {
         data:
           - table: todos
   YAML
+}
+
+# ── Instance (data source) ──────────────────────────────────────────────────────
+
+data "powersync_instance" "existing" {
+  org_id     = data.powersync_organization.main.id
+  project_id = data.powersync_project.terraform_project.id
+  id         = "69fa951654d621dd291948ea"
 }

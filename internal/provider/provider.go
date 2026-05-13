@@ -101,6 +101,8 @@ func (p *PowerSyncProvider) DataSources(_ context.Context) []func() datasource.D
 	return []func() datasource.DataSource{
 		datasources.NewOrganizationDataSource,
 		datasources.NewProjectDataSource,
+		datasources.NewProjectsDataSource,
+		datasources.NewInstanceDataSource,
 	}
 }
 

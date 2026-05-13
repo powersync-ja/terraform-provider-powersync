@@ -72,9 +72,26 @@ type DeployOperation struct {
 
 type InstanceStatus struct {
 	ID          string            `json:"id"`
+	// Provisioned is true when sync rules have been deployed.
+	// Use InstanceURL + Operations (via DeriveStatus) for liveness.
 	Provisioned bool              `json:"provisioned"`
 	Operations  []DeployOperation `json:"operations"`
 	InstanceURL string            `json:"instance_url,omitempty"`
+}
+
+// DeriveStatus returns a human-readable status. The API's `provisioned` flag
+// is not reliable as an "is the instance live" signal (it returns false even
+// for long-lived healthy instances), so we infer from operations + URL.
+func (s *InstanceStatus) DeriveStatus() string {
+	for _, op := range s.Operations {
+		if op.Status == "pending" || op.Status == "running" {
+			return "deploying"
+		}
+	}
+	if s.InstanceURL != "" {
+		return "active"
+	}
+	return "provisioning"
 }
 
 type Region struct {
