@@ -99,6 +99,18 @@ type Region struct {
 	Deployable bool   `json:"deployable"`
 }
 
+// InstanceSummary is the lightweight per-instance shape returned by
+// /api/v1/instances/list. For full config/status, call GetInstanceConfig
+// and GetInstanceStatus per instance.
+type InstanceSummary struct {
+	ID         string `json:"id"`
+	OrgID      string `json:"org_id"`
+	AppID      string `json:"app_id"`
+	Name       string `json:"name"`
+	HasConfig  bool   `json:"has_config"`
+	Deployable bool   `json:"deployable"`
+}
+
 // --- Request / response types ---
 
 type createInstanceRequest struct {
@@ -151,6 +163,15 @@ type testConnectionResponse struct {
 
 type listRegionsResponse struct {
 	Regions []Region `json:"regions"`
+}
+
+type listInstancesRequest struct {
+	OrgID string `json:"org_id"`
+	AppID string `json:"app_id"`
+}
+
+type listInstancesResponse struct {
+	Instances []InstanceSummary `json:"instances"`
 }
 
 // --- Methods ---
@@ -248,6 +269,18 @@ func (c *Client) TestConnection(ctx context.Context, orgID, appID, instanceID st
 		return fmt.Errorf("connection test failed")
 	}
 	return nil
+}
+
+// ListInstances returns the lightweight summary list for all instances in a
+// project. The endpoint has no pagination — strict validation, all results in
+// one shot.
+func (c *Client) ListInstances(ctx context.Context, orgID, appID string) ([]InstanceSummary, error) {
+	req := listInstancesRequest{OrgID: orgID, AppID: appID}
+	var out listInstancesResponse
+	if err := c.managementPostData(ctx, "/api/v1/instances/list", req, &out); err != nil {
+		return nil, err
+	}
+	return out.Instances, nil
 }
 
 func (c *Client) ListRegions(ctx context.Context) ([]Region, error) {

@@ -103,6 +103,7 @@ func (p *PowerSyncProvider) DataSources(_ context.Context) []func() datasource.D
 		datasources.NewProjectDataSource,
 		datasources.NewProjectsDataSource,
 		datasources.NewInstanceDataSource,
+		datasources.NewInstancesDataSource,
 	}
 }
 

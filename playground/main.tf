@@ -80,3 +80,10 @@ data "powersync_instance" "existing" {
   project_id = data.powersync_project.terraform_project.id
   id         = "69fa951654d621dd291948ea"
 }
+
+# ── Instances (list data source) ───────────────────────────────────────────────
+
+data "powersync_instances" "all" {
+  org_id     = data.powersync_organization.main.id
+  project_id = data.powersync_project.terraform_project.id
+}

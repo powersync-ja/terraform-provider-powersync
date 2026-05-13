@@ -52,6 +52,20 @@ output "projects_all" {
   value = data.powersync_projects.all.projects
 }
 
+# ── Instances (list data source) ───────────────────────────────────────────────
+
+output "instances_count" {
+  value = length(data.powersync_instances.all.instances)
+}
+
+output "instances_names" {
+  value = [for i in data.powersync_instances.all.instances : i.name]
+}
+
+output "instances_all" {
+  value = data.powersync_instances.all.instances
+}
+
 # ── Instance ─────────────────────────────────────────────────────────────────────
 
 output "instance_id" {
