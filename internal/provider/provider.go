@@ -109,6 +109,7 @@ func (p *PowerSyncProvider) DataSources(_ context.Context) []func() datasource.D
 
 func (p *PowerSyncProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		resources.NewProjectResource,
 		resources.NewInstanceResource,
 	}
 }

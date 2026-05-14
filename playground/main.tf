@@ -9,9 +9,9 @@ terraform {
 
 provider "powersync" {
   # admin_token is picked up from the PS_PAT_TOKEN environment variable (recommended).
-  # It can also be inlined — less secure, but if inlined via a variable the value                                                                                        
-  # itself can still be passed securely through Terraform's own env vars                                                                                                 
-  # (e.g. TF_VAR_ps_admin_token).                                                                                                                                      
+  # It can also be inlined — less secure, but if inlined via a variable the value
+  # itself can still be passed securely through Terraform's own env vars
+  # (e.g. TF_VAR_ps_admin_token).
   # admin_token  = var.admin_token
   accounts_url   = "https://accounts.staging.powersync.com"
   management_url = "https://powersync-api.staging.journeyapps.com"
@@ -19,35 +19,32 @@ provider "powersync" {
 
 locals {
   org_id = "69e1ded296488e0007395292"
-  project_id = "69fa95159e449e0007987a88"
 }
 
-# ── Organization ────────────────────────────────────────────────────────────────
+# ── Organization ───────────────────────────────────────────────────────────────
 
 data "powersync_organization" "main" {
   id = local.org_id
 }
 
-# ── Project ─────────────────────────────────────────────────────────────────────
+# ── Project (managed) ──────────────────────────────────────────────────────────
 
-data "powersync_project" "terraform_project" {
+resource "powersync_project" "main" {
   org_id = data.powersync_organization.main.id
-  id     = local.project_id
+  name   = "Terraform Project"
+  region = "eu"
+
+  # Uncomment to allow destroy when un-managed instances exist under this project.
+  # force_destroy = true
 }
 
-# ── Projects (list data source) ────────────────────────────────────────────────
+# ── Instance (managed) ─────────────────────────────────────────────────────────
 
-data "powersync_projects" "all" {
-  org_id = data.powersync_organization.main.id
-}
-
-# ── Instance ─────────────────────────────────────────────────────────────────────
-
-resource "powersync_instance" "terraform_instance" {
+resource "powersync_instance" "main" {
   org_id     = data.powersync_organization.main.id
-  project_id = data.powersync_project.terraform_project.id
-  name   = "terraform-instance"
-  region = "staging" # staging env uses "staging" region; production uses "eu", "us", etc.
+  project_id = powersync_project.main.id
+  name       = "terraform-instance"
+  region     = "staging" # staging env uses "staging" region; production uses "eu", "us", etc.
 
   # replication_connection {
   #   type     = "postgresql"
@@ -73,17 +70,24 @@ resource "powersync_instance" "terraform_instance" {
   YAML
 }
 
-# ── Instance (data source) ──────────────────────────────────────────────────────
+# ── Data sources (round-tripping the managed resources) ────────────────────────
 
-data "powersync_instance" "existing" {
-  org_id     = data.powersync_organization.main.id
-  project_id = data.powersync_project.terraform_project.id
-  id         = "69fa951654d621dd291948ea"
+data "powersync_project" "main" {
+  org_id = data.powersync_organization.main.id
+  id     = powersync_project.main.id
 }
 
-# ── Instances (list data source) ───────────────────────────────────────────────
+data "powersync_projects" "all" {
+  org_id = data.powersync_organization.main.id
+}
+
+data "powersync_instance" "main" {
+  org_id     = data.powersync_organization.main.id
+  project_id = powersync_project.main.id
+  id         = powersync_instance.main.id
+}
 
 data "powersync_instances" "all" {
   org_id     = data.powersync_organization.main.id
-  project_id = data.powersync_project.terraform_project.id
+  project_id = powersync_project.main.id
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -19,17 +20,30 @@ type managementEnvelope struct {
 type Client struct {
 	accountsURL   string
 	managementURL string
-	token         string
-	http          *http.Client
+	// alphaURL is derived from managementURL. Once the management API exposes
+	// the Alpha endpoints (apps/create, apps/delete) directly, we can drop this
+	// field and route alphaPost through managementPost.
+	alphaURL string
+	token    string
+	http     *http.Client
 }
 
 func New(accountsURL, managementURL, token string) *Client {
 	return &Client{
 		accountsURL:   accountsURL,
 		managementURL: managementURL,
+		alphaURL:      deriveAlphaURL(managementURL),
 		token:         token,
 		http:          &http.Client{Timeout: 30 * time.Second},
 	}
+}
+
+// deriveAlphaURL swaps `powersync-api.` for `alpha.` in the management host.
+// Works for both prod (powersync-api.journeyapps.com → alpha.journeyapps.com)
+// and staging. No-op for non-conforming URLs, which will yield 404s — fix the
+// management_url if you're on a custom host.
+func deriveAlphaURL(managementURL string) string {
+	return strings.Replace(managementURL, "powersync-api.", "alpha.", 1)
 }
 
 type apiError struct {
@@ -95,9 +109,39 @@ func (c *Client) post(ctx context.Context, path string, body, out any) error {
 	return c.doRequest(ctx, http.MethodPost, c.accountsURL+path, body, out)
 }
 
+// postData is like post but unwraps the {"data": ...} response envelope.
+func (c *Client) postData(ctx context.Context, path string, body, out any) error {
+	var wrapper managementEnvelope
+	if err := c.post(ctx, path, body, &wrapper); err != nil {
+		return err
+	}
+	if out != nil && len(wrapper.Data) > 0 {
+		return json.Unmarshal(wrapper.Data, out)
+	}
+	return nil
+}
+
 // managementPost targets the management API.
 func (c *Client) managementPost(ctx context.Context, path string, body, out any) error {
 	return c.doRequest(ctx, http.MethodPost, c.managementURL+path, body, out)
+}
+
+// alphaPost targets the Alpha service. To be folded into managementPost when
+// the management API exposes Alpha endpoints — just change the URL here.
+func (c *Client) alphaPost(ctx context.Context, path string, body, out any) error {
+	return c.doRequest(ctx, http.MethodPost, c.alphaURL+path, body, out)
+}
+
+// alphaPostData is alphaPost with the {"data": ...} envelope unwrapping.
+func (c *Client) alphaPostData(ctx context.Context, path string, body, out any) error {
+	var wrapper managementEnvelope
+	if err := c.alphaPost(ctx, path, body, &wrapper); err != nil {
+		return err
+	}
+	if out != nil && len(wrapper.Data) > 0 {
+		return json.Unmarshal(wrapper.Data, out)
+	}
+	return nil
 }
 
 // managementGet targets the management API with GET.

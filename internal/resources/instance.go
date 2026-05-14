@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -45,15 +46,13 @@ type instanceModel struct {
 	Status                 types.String         `tfsdk:"status"`
 	Provisioned            types.Bool           `tfsdk:"provisioned"`
 	InstanceURL            types.String         `tfsdk:"instance_url"`
-	Operations             []operationModel     `tfsdk:"operations"`
+	// Operations is types.List (not []operationModel) because the field is
+	// computed and the framework can't represent "unknown" in a Go-native slice
+	// during the Create plan phase.
+	Operations             types.List           `tfsdk:"operations"`
 	ReplicationConnections []connectionModel    `tfsdk:"replication_connection"`
 	ClientAuth             []clientAuthModel    `tfsdk:"client_auth"`
 	ProgramVersion         []programVersionModel `tfsdk:"program_version"`
-}
-
-type operationModel struct {
-	ID     types.String `tfsdk:"id"`
-	Status types.String `tfsdk:"status"`
 }
 
 type connectionModel struct {
@@ -354,7 +353,7 @@ func (r *InstanceResource) Create(ctx context.Context, req resource.CreateReques
 	plan.Status = types.StringNull()
 	plan.Provisioned = types.BoolNull()
 	plan.InstanceURL = types.StringNull()
-	plan.Operations = []operationModel{}
+	plan.Operations = types.ListNull(operationObjectType)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -565,18 +564,28 @@ func (r *InstanceResource) refreshStatus(ctx context.Context, state *instanceMod
 	state.Operations = operationsFromAPI(status.Operations)
 }
 
-func operationsFromAPI(ops []client.DeployOperation) []operationModel {
+var operationObjectType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{
+		"id":     types.StringType,
+		"status": types.StringType,
+	},
+}
+
+func operationsFromAPI(ops []client.DeployOperation) types.List {
 	if len(ops) == 0 {
-		return []operationModel{}
+		return types.ListValueMust(operationObjectType, []attr.Value{})
 	}
-	result := make([]operationModel, len(ops))
+	elements := make([]attr.Value, len(ops))
 	for i, op := range ops {
-		result[i] = operationModel{
-			ID:     types.StringValue(op.ID),
-			Status: types.StringValue(op.Status),
-		}
+		elements[i] = types.ObjectValueMust(
+			operationObjectType.AttrTypes,
+			map[string]attr.Value{
+				"id":     types.StringValue(op.ID),
+				"status": types.StringValue(op.Status),
+			},
+		)
 	}
-	return result
+	return types.ListValueMust(operationObjectType, elements)
 }
 
 func buildDeployRequest(plan instanceModel, instanceID, orgID, projectID string) client.DeployInstanceRequest {
