@@ -19,6 +19,17 @@ provider "powersync" {
 
 locals {
   org_id = "69e1ded296488e0007395292"
+
+  # Supabase project we replicate from.
+  supabase_db_host = "db.erzuanfjiinltpklcunu.supabase.co"
+  supabase_db_name = "postgres"
+  supabase_db_user = "powersync_role"
+}
+
+variable "replication_password" {
+  description = "Password for the powersync_role on the Supabase Postgres. Set via TF_VAR_replication_password."
+  type        = string
+  sensitive   = true
 }
 
 # ── Organization ───────────────────────────────────────────────────────────────
@@ -46,27 +57,30 @@ resource "powersync_instance" "main" {
   name       = "terraform-instance"
   region     = "staging" # staging env uses "staging" region; production uses "eu", "us", etc.
 
-  # replication_connection {
-  #   type     = "postgresql"
-  #   name     = "main-db"
-  #   hostname = "db.example.com"
-  #   port     = 5432
-  #   username = "powersync"
-  #   password = "changeme"
-  #   database = "mydb"
-  #   sslmode  = "verify-full"
-  # }
+  replication_connection {
+    type     = "postgresql"
+    name     = "supabase-main"
+    hostname = local.supabase_db_host
+    port     = 5432
+    username = local.supabase_db_user
+    password = var.replication_password
+    database = local.supabase_db_name
+    sslmode  = "verify-full"
+    # cacert omitted: PowerSync ships Supabase's CA cert by default with verify-full.
+  }
 
   client_auth {
+    supabase               = true
     allow_temporary_tokens = true
   }
 
   sync_config_content = <<-YAML
-    bucket_definitions:
-      - name: all
-        parameters: []
-        data:
-          - table: todos
+    config:
+      edition: 3
+    streams:
+      todos:
+        auto_subscribe: true
+        query: SELECT * FROM todos
   YAML
 }
 

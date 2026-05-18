@@ -1,5 +1,8 @@
 package main
 
+// Generate Terraform Registry documentation from schema descriptions + the examples/ directory.
+// go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-name powersync
+
 import (
 	"context"
 	"flag"

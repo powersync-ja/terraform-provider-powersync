@@ -78,6 +78,7 @@ output "instance_operations" {
 
 output "instance_replication_connections" {
   value = powersync_instance.main.replication_connection
+  sensitive = true
 }
 
 output "instance_client_auth" {

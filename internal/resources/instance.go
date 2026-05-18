@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -25,6 +26,7 @@ const (
 
 var _ resource.Resource = &InstanceResource{}
 var _ resource.ResourceWithImportState = &InstanceResource{}
+var _ resource.ResourceWithModifyPlan = &InstanceResource{}
 
 type InstanceResource struct {
 	client *client.Client
@@ -224,11 +226,11 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 						},
 						"sslmode": schema.StringAttribute{
 							Optional:    true,
-							Description: "TLS mode: verify-full or verify-ca. PostgreSQL and MySQL only.",
+							Description: "TLS mode. Only `verify-full` (default) and `verify-ca` are accepted; weaker modes are rejected. PostgreSQL and MySQL only.",
 						},
 						"cacert": schema.StringAttribute{
 							Optional:    true,
-							Description: "PEM-encoded CA certificate for TLS verification. PostgreSQL and MySQL only.",
+							Description: "PEM-encoded CA certificate for TLS verification. Not required for Supabase — PowerSync the CAs by default. PostgreSQL and MySQL only.",
 						},
 						"client_certificate": schema.StringAttribute{
 							Optional:    true,
@@ -309,6 +311,20 @@ func (r *InstanceResource) Configure(_ context.Context, req resource.ConfigureRe
 		return
 	}
 	r.client = c
+}
+
+// ── ModifyPlan ────────────────────────────────────────────────────────────────
+
+// ModifyPlan marks `operations` as unknown when the plan involves an update,
+// because every deploy generates a new operation ID. UseStateForUnknown alone
+// would tell Terraform the value stays the same, then the post-apply refresh
+// would contradict that and trigger "inconsistent result after apply".
+func (r *InstanceResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		// Create or Delete — Operations handled by Create's plan and Delete clears state.
+		return
+	}
+	resp.Plan.SetAttribute(ctx, path.Root("operations"), types.ListUnknown(operationObjectType))
 }
 
 // ── Create ────────────────────────────────────────────────────────────────────
