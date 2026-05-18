@@ -1,0 +1,22 @@
+---
+page_title: "Resource: powersync_project"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# Resource: powersync_project
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+{{ tffile "examples/resources/powersync_project/resource.tf" }}
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Import
+
+Import is supported using the following syntax:
+
+{{ codefile "shell" "examples/resources/powersync_project/import.sh" }}

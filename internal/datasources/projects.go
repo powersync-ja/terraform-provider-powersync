@@ -66,11 +66,11 @@ func (d *ProjectsDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 						},
 						"default_region": schema.StringAttribute{
 							Computed:    true,
-							Description: "Default region for instances created in this project.",
+							Description: "Default region for instances created under this project. One of: `eu`, `us`, `jp`, `au`, `br`.",
 						},
 						"vcs_mode": schema.StringAttribute{
 							Computed:    true,
-							Description: "Version control mode for sync rules: BASIC (dashboard/API managed) or GIT (sourced from a git repo).",
+							Description: "Version control mode for the sync config: `BASIC` (dashboard/API/Terraform managed) or `GIT` (sourced from a git repo).",
 						},
 						"trial": schema.BoolAttribute{
 							Computed:    true,

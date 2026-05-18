@@ -115,6 +115,6 @@ If `apply` reports `connection test failed`, check that:
 
 1. `TF_VAR_replication_password` matches what you actually set on `powersync_role` (re-`export` if you've regenerated it since).
 2. The Supabase project has IPv4 reachable (Add-on enabled, or pooler used).
-3. The `powersync` publication exists and includes the tables you reference in your sync rules.
+3. The `powersync` publication exists and includes the tables you reference in your sync config.
 
-If `apply` reports `Failed to deploy instance: ...`, the connection test passed but the deploy itself errored — most often a malformed sync rules YAML or a region mismatch. The error message usually points at the offending field.
+If `apply` reports `Failed to deploy instance: ...`, the connection test passed but the deploy itself errored — most often a malformed sync config YAML or a region mismatch. The error message usually points at the offending field.

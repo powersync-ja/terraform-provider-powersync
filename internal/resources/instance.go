@@ -127,7 +127,8 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"region": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Deployment region (e.g. \"us\", \"eu\"). Defaults to the project's default_region. Changing this forces a new instance.",
+				Description: "Region the instance runs in. One of: `eu`, `us`, `jp`, `au`, `br`. Defaults to the project's `default_region` when omitted. " +
+					"Changing this forces a new instance (the management API does not support cross-region moves).",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 					stringplanmodifier.RequiresReplaceIfConfigured(),
@@ -136,7 +137,8 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"sync_config_content": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Sync rules YAML. Omit to let CI/CD manage sync rules independently; Terraform will reflect whatever is deployed.",
+				Description: "Sync config YAML (bucket definitions or streams). Omit to let CI/CD or the dashboard manage the sync config independently — " +
+					"Terraform will read back whatever is currently deployed. See https://docs.powersync.com/sync/overview.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -150,7 +152,7 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"provisioned": schema.BoolAttribute{
 				Computed:    true,
-				Description: "Whether sync rules have been deployed to this instance. Despite the name, this is not a liveness signal — use `status` or `instance_url` for that.",
+				Description: "Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal — use `status` or `instance_url` for that.",
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
 				},
@@ -184,70 +186,79 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 		},
 		Blocks: map[string]schema.Block{
 			"replication_connection": schema.ListNestedBlock{
-				Description: "Database replication connection. At least one is required for a functional instance.",
+				Description: "Source database replication connection. At least one is required for a functional instance. " +
+					"Specify either `uri` *or* the individual host/port/user/pass fields — not both.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"type": schema.StringAttribute{
 							Required:    true,
-							Description: "Database type: postgresql, mongodb, mysql, or mssql.",
+							Description: "Source database type. One of: `postgresql`, `mongodb`, `mysql`, `mssql`. Determines which other fields apply.",
 						},
 						"name": schema.StringAttribute{
 							Optional:    true,
-							Description: "Display name for this connection.",
+							Description: "Human-readable display name for this connection. Surfaced in the PowerSync dashboard; has no functional effect.",
 						},
 						"tag": schema.StringAttribute{
 							Optional:    true,
-							Description: "Tag used to reference this connection in sync rules. Defaults to \"default\" on the server.",
+							Description: "Identifier used to reference this connection from the sync config (e.g. when an instance has multiple source DBs). Defaults to `default` server-side. See https://docs.powersync.com/sync/overview.",
 						},
 						"uri": schema.StringAttribute{
 							Optional:    true,
-							Description: "Full connection URI. Use instead of individual host/port/user/pass fields.",
+							Description: "Full connection URI (e.g. `postgresql://user:pass@host:5432/db`, `mongodb+srv://...`, `mysql://...`). " +
+								"Mutually exclusive with the host/port/username/password/database fields. Applies to all DB types.",
 						},
 						"hostname": schema.StringAttribute{
 							Optional:    true,
-							Description: "Database hostname.",
+							Description: "Database server hostname. Applies to all DB types when `uri` is not used.",
 						},
 						"port": schema.Int64Attribute{
 							Optional:    true,
-							Description: "Database port.",
+							Description: "Database server port. Typical defaults: PostgreSQL 5432, MongoDB 27017, MySQL 3306, MSSQL 1433. " +
+								"Applies to all DB types when `uri` is not used.",
 						},
 						"username": schema.StringAttribute{
 							Optional:    true,
-							Description: "Database username.",
+							Description: "Database user PowerSync connects as. Should be a dedicated replication user with the minimum required privileges, not an admin account. " +
+								"Applies to all DB types when `uri` is not used.",
 						},
 						"password": schema.StringAttribute{
 							Optional:    true,
 							Sensitive:   true,
-							Description: "Database password.",
+							Description: "Password for the replication user. Stored server-side as a secret; redacted in plan/apply output. " +
+								"Applies to all DB types when `uri` is not used.",
 						},
 						"database": schema.StringAttribute{
 							Optional:    true,
-							Description: "Database name.",
+							Description: "Database name within the server (e.g. `postgres` for Supabase, the MongoDB database name, the MySQL schema name). " +
+								"Applies to PostgreSQL, MongoDB, and MySQL.",
 						},
 						"sslmode": schema.StringAttribute{
 							Optional:    true,
-							Description: "TLS mode. Only `verify-full` (default) and `verify-ca` are accepted; weaker modes are rejected. PostgreSQL and MySQL only.",
+							Description: "TLS verification mode. PowerSync accepts only `verify-full` (default; verifies cert chain + hostname) and `verify-ca` (verifies cert chain only). " +
+								"Weaker modes like `require`/`prefer`/`disable` are rejected. Applies to PostgreSQL and MySQL.",
 						},
 						"cacert": schema.StringAttribute{
 							Optional:    true,
-							Description: "PEM-encoded CA certificate for TLS verification. Not required for Supabase — PowerSync the CAs by default. PostgreSQL and MySQL only.",
+							Description: "PEM-encoded CA certificate used to verify the server cert under `verify-full`/`verify-ca`. " +
+								"Only needed when the source DB's CA is not in PowerSync's built-in trust store — e.g. self-hosted Postgres with a private CA. " +
+								"Managed providers (Supabase, AWS RDS, Azure Postgres) are trusted by default; leave this empty for those. Applies to PostgreSQL and MySQL.",
 						},
 						"client_certificate": schema.StringAttribute{
 							Optional:    true,
-							Description: "PEM-encoded client certificate for mutual TLS. PostgreSQL and MySQL only.",
+							Description: "PEM-encoded client certificate for mutual TLS (mTLS). Pair with `client_private_key`. Applies to PostgreSQL and MySQL.",
 						},
 						"client_private_key": schema.StringAttribute{
 							Optional:    true,
 							Sensitive:   true,
-							Description: "PEM-encoded client private key for mutual TLS. PostgreSQL and MySQL only.",
+							Description: "PEM-encoded client private key for mutual TLS (mTLS). Pair with `client_certificate`. Stored server-side as a secret. Applies to PostgreSQL and MySQL.",
 						},
 						"post_images": schema.StringAttribute{
 							Optional:    true,
-							Description: "MongoDB change stream mode: off, auto_configure, or read_only.",
+							Description: "Change-stream `fullDocument` mode. One of: `off` (only the document key), `auto_configure` (PowerSync sets `changeStreamPreAndPostImages` on collections automatically), `read_only` (assume images are already configured upstream). MongoDB only.",
 						},
 						"schema": schema.StringAttribute{
 							Optional:    true,
-							Description: "Database schema. MSSQL only.",
+							Description: "Default schema to use for replicated tables (e.g. `dbo`). MSSQL only.",
 						},
 					},
 				},

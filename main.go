@@ -1,7 +1,9 @@
 package main
 
 // Generate Terraform Registry documentation from schema descriptions + the examples/ directory.
-// go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-name powersync
+// Note: the next line is a Go compiler directive — the colon must immediately follow `//go` (no space),
+// or the directive is treated as a regular comment and `go generate` becomes a no-op.
+//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-name powersync
 
 import (
 	"context"

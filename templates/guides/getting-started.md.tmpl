@@ -116,7 +116,7 @@ terraform state list                      # every managed resource
 
 ## 5. Iterate
 
-Change anything — instance name, sync rules, replication connection — and re-run `terraform plan` then `apply`. Every update goes through PowerSync's deploy endpoint and triggers a full redeploy (~2–3 minutes), which is a constraint of the management API: there is no separate "rename" or "patch" endpoint, so any change is treated as a redeploy. The instance ID stays the same; only the configuration is updated in place.
+Change anything — instance name, sync config, replication connection — and re-run `terraform plan` then `apply`. Every update goes through PowerSync's deploy endpoint and triggers a full redeploy (~2–3 minutes), which is a constraint of the management API: there is no separate "rename" or "patch" endpoint, so any change is treated as a redeploy. The instance ID stays the same; only the configuration is updated in place.
 
 To force a recreate (e.g. moving regions, which is `ForceNew` on the instance), Terraform plans a destroy followed by a create automatically.
 
@@ -132,4 +132,4 @@ This destroys both the instance and the project. If the project owns unmanaged i
 
 - [Connecting Supabase](connecting-supabase.md) — Supabase-specific gotchas (publication setup, JWT modes, IPv4 add-on).
 - [`powersync_instance` reference](../resources/instance.md) — full schema for the instance resource.
-- [PowerSync sync rules docs](https://docs.powersync.com/usage/sync-rules) — what to put in `sync_config_content`.
+- [PowerSync sync config docs](https://docs.powersync.com/sync/overview) — what to put in `sync_config_content`.

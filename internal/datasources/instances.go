@@ -39,7 +39,7 @@ func (d *InstancesDataSource) Metadata(_ context.Context, req datasource.Metadat
 
 func (d *InstancesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Lists all PowerSync instances in a project. Returns a lightweight summary per instance — for region, URL, status, or sync rules use the `powersync_instance` data source on a specific id.",
+		Description: "Lists all PowerSync instances in a project. Returns a lightweight summary per instance — for region, URL, status, or sync config use the `powersync_instance` data source on a specific id.",
 		Attributes: map[string]schema.Attribute{
 			"org_id": schema.StringAttribute{
 				Required:    true,
@@ -64,11 +64,11 @@ func (d *InstancesDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 						},
 						"has_config": schema.BoolAttribute{
 							Computed:    true,
-							Description: "Whether the instance has a hosted config attached (region, replication, etc.).",
+							Description: "Whether the instance has been configured (region, replication, client auth). `false` for newly created instances that have never been deployed.",
 						},
 						"deployable": schema.BoolAttribute{
 							Computed:    true,
-							Description: "Whether the instance is ready to deploy (valid config + sync rules).",
+							Description: "Whether the instance is currently in a deployed state. `false` for new, deactivated, or destroyed instances.",
 						},
 					},
 				},

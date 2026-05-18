@@ -12,7 +12,7 @@ This provider integrates Terraform with the PowerSync cloud, allowing you to man
 
 - **Provision a PowerSync alongside the rest of your infrastructure**: using the same terraform apply workflow that creates your database, networking, and supporting services.
 - **Keep `dev`/`staging`/`prod` environments consistently**: define them once, parameterize it with variables instead of configuring everything manually in the dashboard.
-- **Review infrastructure changes in PRs**: changes to sync rules, replication connections, JWKS settings show up as Terraform plan diffs and Git.
+- **Review infrastructure changes in PRs**: changes to sync config, replication connections, JWKS settings show up as Terraform plan diffs and Git.
 - **Recreate environments from scratch when needed**: using version-controlled Terraform configuration as a repeatable source of truth.
 
 If you've never used Terraform before, check the [Getting Started guide](docs/guides/getting-started.md) for more information.

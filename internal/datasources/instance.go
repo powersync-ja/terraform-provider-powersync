@@ -95,7 +95,7 @@ func (d *InstanceDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 			},
 			"region": schema.StringAttribute{
 				Computed:    true,
-				Description: "Deployment region.",
+				Description: "Region the instance runs in. One of: `eu`, `us`, `jp`, `au`, `br`.",
 			},
 			"status": schema.StringAttribute{
 				Computed:    true,
@@ -103,7 +103,7 @@ func (d *InstanceDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 			},
 			"provisioned": schema.BoolAttribute{
 				Computed:    true,
-				Description: "Whether sync rules have been deployed to this instance. Despite the name, this is not a liveness signal — use `status` or `instance_url` for that.",
+				Description: "Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal — use `status` or `instance_url` for that.",
 			},
 			"instance_url": schema.StringAttribute{
 				Computed:    true,
@@ -111,7 +111,7 @@ func (d *InstanceDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 			},
 			"sync_config_content": schema.StringAttribute{
 				Computed:    true,
-				Description: "Currently deployed sync rules YAML.",
+				Description: "Currently deployed sync config YAML. See https://docs.powersync.com/sync/overview.",
 			},
 			"operations": schema.ListNestedAttribute{
 				Computed:    true,
@@ -144,7 +144,7 @@ func (d *InstanceDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 						},
 						"tag": schema.StringAttribute{
 							Computed:    true,
-							Description: "Tag used to reference this connection in sync rules.",
+							Description: "Identifier used to reference this connection from the sync config.",
 						},
 						"uri": schema.StringAttribute{
 							Computed:    true,

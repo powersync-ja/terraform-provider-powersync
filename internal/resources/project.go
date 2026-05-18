@@ -64,14 +64,15 @@ func (r *ProjectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			},
 			"region": schema.StringAttribute{
 				Required:    true,
-				Description: "Default region for the project (e.g. \"eu\", \"us\"). Surfaces as `default_region` on the `powersync_project` data source. Changing this forces a new project.",
+				Description: "Default region for instances created under this project. One of: `eu`, `us`, `jp`, `au`, `br`. " +
+					"Surfaces as `default_region` on the `powersync_project` data source. Changing this forces a new project.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"vcs_mode": schema.StringAttribute{
 				Computed:    true,
-				Description: "Version control mode for sync rules. Always \"BASIC\" today.",
+				Description: "Version control mode for the sync config. Always `BASIC` today.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
