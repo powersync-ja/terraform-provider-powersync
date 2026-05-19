@@ -94,7 +94,6 @@ output "instance_url" {
 
 - `id` (String) Instance ID assigned by the API.
 - `instance_url` (String) Public endpoint URL of the instance.
-- `operations` (Attributes List) In-flight or recently completed deploy operations on the instance. (see [below for nested schema](#nestedatt--operations))
 - `provisioned` (Boolean) Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal — use `status` or `instance_url` for that.
 - `status` (String) Derived status: "deploying" while an operation is pending/running, "active" once the instance has a URL, otherwise "provisioning".
 
@@ -141,15 +140,6 @@ Optional:
 - `tag` (String) Identifier used to reference this connection from the sync config (e.g. when an instance has multiple source DBs). Defaults to `default` server-side. See https://docs.powersync.com/sync/overview.
 - `uri` (String) Full connection URI (e.g. `postgresql://user:pass@host:5432/db`, `mongodb+srv://...`, `mysql://...`). Mutually exclusive with the host/port/username/password/database fields. Applies to all DB types.
 - `username` (String) Database user PowerSync connects as. Should be a dedicated replication user with the minimum required privileges, not an admin account. Applies to all DB types when `uri` is not used.
-
-
-<a id="nestedatt--operations"></a>
-### Nested Schema for `operations`
-
-Read-Only:
-
-- `id` (String) Operation ID.
-- `status` (String) Operation status: pending, running, completed, or failed.
 
 ## Import
 

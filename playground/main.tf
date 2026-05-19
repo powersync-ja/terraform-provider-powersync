@@ -21,7 +21,7 @@ locals {
   org_id = "69e1ded296488e0007395292"
 
   # Supabase project we replicate from.
-  supabase_db_host = "db.erzuanfjiinltpklcunu.supabase.co"
+  supabase_db_host = "db.ltvtrksiearsqhvyltkq.supabase.co"
   supabase_db_name = "postgres"
   supabase_db_user = "powersync_role"
 }
@@ -84,24 +84,3 @@ resource "powersync_instance" "main" {
   YAML
 }
 
-# ── Data sources (round-tripping the managed resources) ────────────────────────
-
-data "powersync_project" "main" {
-  org_id = data.powersync_organization.main.id
-  id     = powersync_project.main.id
-}
-
-data "powersync_projects" "all" {
-  org_id = data.powersync_organization.main.id
-}
-
-data "powersync_instance" "main" {
-  org_id     = data.powersync_organization.main.id
-  project_id = powersync_project.main.id
-  id         = powersync_instance.main.id
-}
-
-data "powersync_instances" "all" {
-  org_id     = data.powersync_organization.main.id
-  project_id = powersync_project.main.id
-}

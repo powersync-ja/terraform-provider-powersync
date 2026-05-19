@@ -6,13 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -26,7 +23,6 @@ const (
 
 var _ resource.Resource = &InstanceResource{}
 var _ resource.ResourceWithImportState = &InstanceResource{}
-var _ resource.ResourceWithModifyPlan = &InstanceResource{}
 
 type InstanceResource struct {
 	client *client.Client
@@ -39,21 +35,17 @@ func NewInstanceResource() resource.Resource {
 // ── Model types ──────────────────────────────────────────────────────────────
 
 type instanceModel struct {
-	ID                     types.String         `tfsdk:"id"`
-	OrgID                  types.String         `tfsdk:"org_id"`
-	ProjectID              types.String         `tfsdk:"project_id"`
-	Name                   types.String         `tfsdk:"name"`
-	Region                 types.String         `tfsdk:"region"`
-	SyncConfigContent      types.String         `tfsdk:"sync_config_content"`
-	Status                 types.String         `tfsdk:"status"`
-	Provisioned            types.Bool           `tfsdk:"provisioned"`
-	InstanceURL            types.String         `tfsdk:"instance_url"`
-	// Operations is types.List (not []operationModel) because the field is
-	// computed and the framework can't represent "unknown" in a Go-native slice
-	// during the Create plan phase.
-	Operations             types.List           `tfsdk:"operations"`
-	ReplicationConnections []connectionModel    `tfsdk:"replication_connection"`
-	ClientAuth             []clientAuthModel    `tfsdk:"client_auth"`
+	ID                     types.String          `tfsdk:"id"`
+	OrgID                  types.String          `tfsdk:"org_id"`
+	ProjectID              types.String          `tfsdk:"project_id"`
+	Name                   types.String          `tfsdk:"name"`
+	Region                 types.String          `tfsdk:"region"`
+	SyncConfigContent      types.String          `tfsdk:"sync_config_content"`
+	Status                 types.String          `tfsdk:"status"`
+	Provisioned            types.Bool            `tfsdk:"provisioned"`
+	InstanceURL            types.String          `tfsdk:"instance_url"`
+	ReplicationConnections []connectionModel     `tfsdk:"replication_connection"`
+	ClientAuth             []clientAuthModel     `tfsdk:"client_auth"`
 	ProgramVersion         []programVersionModel `tfsdk:"program_version"`
 }
 
@@ -162,25 +154,6 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Description: "Public endpoint URL of the instance.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"operations": schema.ListNestedAttribute{
-				Computed:    true,
-				Description: "In-flight or recently completed deploy operations on the instance.",
-				PlanModifiers: []planmodifier.List{
-					listplanmodifier.UseStateForUnknown(),
-				},
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"id": schema.StringAttribute{
-							Computed:    true,
-							Description: "Operation ID.",
-						},
-						"status": schema.StringAttribute{
-							Computed:    true,
-							Description: "Operation status: pending, running, completed, or failed.",
-						},
-					},
 				},
 			},
 		},
@@ -324,20 +297,6 @@ func (r *InstanceResource) Configure(_ context.Context, req resource.ConfigureRe
 	r.client = c
 }
 
-// ── ModifyPlan ────────────────────────────────────────────────────────────────
-
-// ModifyPlan marks `operations` as unknown when the plan involves an update,
-// because every deploy generates a new operation ID. UseStateForUnknown alone
-// would tell Terraform the value stays the same, then the post-apply refresh
-// would contradict that and trigger "inconsistent result after apply".
-func (r *InstanceResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
-		// Create or Delete — Operations handled by Create's plan and Delete clears state.
-		return
-	}
-	resp.Plan.SetAttribute(ctx, path.Root("operations"), types.ListUnknown(operationObjectType))
-}
-
 // ── Create ────────────────────────────────────────────────────────────────────
 
 func (r *InstanceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -380,7 +339,6 @@ func (r *InstanceResource) Create(ctx context.Context, req resource.CreateReques
 	plan.Status = types.StringNull()
 	plan.Provisioned = types.BoolNull()
 	plan.InstanceURL = types.StringNull()
-	plan.Operations = types.ListNull(operationObjectType)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -588,31 +546,6 @@ func (r *InstanceResource) refreshStatus(ctx context.Context, state *instanceMod
 	state.Status = types.StringValue(status.DeriveStatus())
 	state.Provisioned = types.BoolValue(status.Provisioned)
 	state.InstanceURL = stringOrNull(status.InstanceURL)
-	state.Operations = operationsFromAPI(status.Operations)
-}
-
-var operationObjectType = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"id":     types.StringType,
-		"status": types.StringType,
-	},
-}
-
-func operationsFromAPI(ops []client.DeployOperation) types.List {
-	if len(ops) == 0 {
-		return types.ListValueMust(operationObjectType, []attr.Value{})
-	}
-	elements := make([]attr.Value, len(ops))
-	for i, op := range ops {
-		elements[i] = types.ObjectValueMust(
-			operationObjectType.AttrTypes,
-			map[string]attr.Value{
-				"id":     types.StringValue(op.ID),
-				"status": types.StringValue(op.Status),
-			},
-		)
-	}
-	return types.ListValueMust(operationObjectType, elements)
 }
 
 func buildDeployRequest(plan instanceModel, instanceID, orgID, projectID string) client.DeployInstanceRequest {
