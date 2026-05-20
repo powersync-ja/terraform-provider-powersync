@@ -1,0 +1,111 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Minimal permissions for a read-only test workflow.
+permissions:
+  contents: read
+
+# Cancel in-flight runs for the same PR when a new push lands. Doesn't apply to
+# pushes to `main` (we want every commit to be tested through to completion).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build & vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - run: go mod download
+      - run: go build -v ./...
+      - run: go vet ./...
+
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - name: Run unit tests
+        run: go test -v -cover -timeout 120s ./...
+
+  docs:
+    name: Docs in sync
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Regenerate docs
+        run: go generate ./...
+      - name: Verify docs match generated output
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "::error::Generated docs are out of date. Run 'go generate ./...' locally and commit the changes."
+            echo "----- git status -----"
+            git status
+            echo "----- git diff -----"
+            git --no-pager diff
+            exit 1
+          fi
+
+  examples:
+    name: Examples validate & fmt
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Build & install provider locally
+        run: go install .
+      - name: Configure dev_overrides for local provider
+        run: |
+          cat > "$HOME/.terraformrc" <<EOF
+          provider_installation {
+            dev_overrides {
+              "powersync/powersync" = "$(go env GOPATH)/bin"
+            }
+            direct {}
+          }
+          EOF
+      - name: Check HCL formatting
+        run: terraform fmt -check -recursive examples
+      - name: Validate each example
+        run: |
+          set -e
+          # dev_overrides means `terraform init` is a no-op (and actually errors
+          # because the version doesn't exist on the registry) — go straight to
+          # validate, which uses the overridden binary.
+          for dir in examples/provider examples/resources/* examples/data-sources/*; do
+            if [ -d "$dir" ] && compgen -G "$dir/*.tf" > /dev/null; then
+              echo "::group::Validating $dir"
+              (cd "$dir" && terraform validate -no-color)
+              echo "::endgroup::"
+            fi
+          done
