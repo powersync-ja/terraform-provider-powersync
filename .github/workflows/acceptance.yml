@@ -25,8 +25,8 @@ jobs:
     env:
       TF_ACC: "1"
       PS_PAT_TOKEN: ${{ secrets.PS_PAT_TOKEN }}
-      POWERSYNC_TEST_ORG_ID: ${{ secrets.POWERSYNC_TEST_ORG_ID }}
-      POWERSYNC_TEST_SUPABASE_DB_HOST: ${{ secrets.POWERSYNC_TEST_SUPABASE_DB_HOST }}
+      POWERSYNC_TEST_ORG_ID: ${{ vars.POWERSYNC_TEST_ORG_ID }}
+      POWERSYNC_TEST_SUPABASE_DB_HOST: ${{ vars.POWERSYNC_TEST_SUPABASE_DB_HOST }}
       TF_VAR_replication_password: ${{ secrets.POWERSYNC_TEST_REPLICATION_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
@@ -37,15 +37,15 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
-      - name: Confirm required secrets are set
+      - name: Confirm required secrets and variables are set
         run: |
           missing=()
-          [[ -z "$PS_PAT_TOKEN" ]]                    && missing+=(PS_PAT_TOKEN)
-          [[ -z "$POWERSYNC_TEST_ORG_ID" ]]           && missing+=(POWERSYNC_TEST_ORG_ID)
-          [[ -z "$POWERSYNC_TEST_SUPABASE_DB_HOST" ]] && missing+=(POWERSYNC_TEST_SUPABASE_DB_HOST)
-          [[ -z "$TF_VAR_replication_password" ]]     && missing+=(POWERSYNC_TEST_REPLICATION_PASSWORD)
+          [[ -z "$PS_PAT_TOKEN" ]]                    && missing+=("PS_PAT_TOKEN (secret)")
+          [[ -z "$POWERSYNC_TEST_ORG_ID" ]]           && missing+=("POWERSYNC_TEST_ORG_ID (variable)")
+          [[ -z "$POWERSYNC_TEST_SUPABASE_DB_HOST" ]] && missing+=("POWERSYNC_TEST_SUPABASE_DB_HOST (variable)")
+          [[ -z "$TF_VAR_replication_password" ]]     && missing+=("POWERSYNC_TEST_REPLICATION_PASSWORD (secret)")
           if (( ${#missing[@]} > 0 )); then
-            echo "::error::Missing required secret(s): ${missing[*]}"
+            echo "::error::Missing required values: ${missing[*]}"
             echo "Configure them at Settings → Secrets and variables → Actions."
             exit 1
           fi
