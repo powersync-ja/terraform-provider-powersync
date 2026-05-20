@@ -110,7 +110,7 @@ Runnable examples live in [`examples/`](examples/). Each example is a self-conta
 make build       # compile the provider
 make install     # install the binary to $GOPATH/bin
 make test        # run unit tests
-make testacc     # run acceptance tests (requires PS_PAT_TOKEN, hits the real API)
+make testacc     # run acceptance tests (requires staging credentials, hits the real API)
 ```
 
 ### Trying changes against a real Terraform config

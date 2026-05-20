@@ -1,0 +1,53 @@
+name: Acceptance tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Acceptance tests touch real PowerSync resources. Serialize runs on the same
+# branch so two pushes in quick succession don't collide on the shared staging
+# org / Supabase project.
+concurrency:
+  group: acceptance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  acceptance:
+    name: Acceptance tests
+    runs-on: ubuntu-latest
+    # Hard cap — full suite is ~20 minutes today; bail if something hangs.
+    timeout-minutes: 40
+    env:
+      TF_ACC: "1"
+      PS_PAT_TOKEN: ${{ secrets.PS_PAT_TOKEN }}
+      POWERSYNC_TEST_ORG_ID: ${{ secrets.POWERSYNC_TEST_ORG_ID }}
+      POWERSYNC_TEST_SUPABASE_DB_HOST: ${{ secrets.POWERSYNC_TEST_SUPABASE_DB_HOST }}
+      TF_VAR_replication_password: ${{ secrets.POWERSYNC_TEST_REPLICATION_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Confirm required secrets are set
+        run: |
+          missing=()
+          [[ -z "$PS_PAT_TOKEN" ]]                    && missing+=(PS_PAT_TOKEN)
+          [[ -z "$POWERSYNC_TEST_ORG_ID" ]]           && missing+=(POWERSYNC_TEST_ORG_ID)
+          [[ -z "$POWERSYNC_TEST_SUPABASE_DB_HOST" ]] && missing+=(POWERSYNC_TEST_SUPABASE_DB_HOST)
+          [[ -z "$TF_VAR_replication_password" ]]     && missing+=(POWERSYNC_TEST_REPLICATION_PASSWORD)
+          if (( ${#missing[@]} > 0 )); then
+            echo "::error::Missing required secret(s): ${missing[*]}"
+            echo "Configure them at Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+      - name: Run acceptance tests
+        run: go test -v -timeout 35m -run TestAcc ./...
