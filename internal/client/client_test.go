@@ -3,10 +3,13 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestIsNotFound(t *testing.T) {
@@ -175,5 +178,172 @@ func TestDoRequest_ErrorBodyInMessage(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "something broke") {
 		t.Errorf("error should include response body: %v", err)
+	}
+}
+
+// ── isTransient / retryTransient ──────────────────────────────────────────────
+
+// fastRetry swaps the backoff constants down to milliseconds for the duration
+// of a test, so retry tests don't sleep real seconds. Tests in this file run
+// sequentially (no t.Parallel) so we don't worry about concurrent overrides.
+func fastRetry(t *testing.T) {
+	t.Helper()
+	origInitial, origMax := initialBackoff, maxBackoff
+	initialBackoff = 1 * time.Millisecond
+	maxBackoff = 4 * time.Millisecond
+	t.Cleanup(func() {
+		initialBackoff = origInitial
+		maxBackoff = origMax
+	})
+}
+
+func TestIsTransient(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil → false", nil, false},
+		{"400 → false (caller bug, retry won't help)", &apiError{StatusCode: 400}, false},
+		{"401 → false", &apiError{StatusCode: 401}, false},
+		{"404 → false", &apiError{StatusCode: 404}, false},
+		{"500 → true", &apiError{StatusCode: 500}, true},
+		{"502 → true", &apiError{StatusCode: 502}, true},
+		{"503 → true (nginx upstream blip)", &apiError{StatusCode: 503}, true},
+		{"504 → true", &apiError{StatusCode: 504}, true},
+		{"wrapped 503 → true", fmt.Errorf("polling: %w", &apiError{StatusCode: 503}), true},
+		{"network error → true (transport failure)", errors.New("dial tcp: connection refused"), true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isTransient(tt.err); got != tt.want {
+				t.Errorf("isTransient(%v) = %v, want %v", tt.err, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRetryTransient_SucceedsFirstTry(t *testing.T) {
+	calls := 0
+	err := retryTransient(context.Background(), func() error {
+		calls++
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calls != 1 {
+		t.Errorf("expected 1 call, got %d", calls)
+	}
+}
+
+func TestRetryTransient_RetriesUntilSuccess(t *testing.T) {
+	fastRetry(t)
+	calls := int32(0)
+	err := retryTransient(context.Background(), func() error {
+		n := atomic.AddInt32(&calls, 1)
+		if n < 3 {
+			return &apiError{StatusCode: 503, Body: "blip"}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := atomic.LoadInt32(&calls); got != 3 {
+		t.Errorf("expected 3 calls (2 failures + 1 success), got %d", got)
+	}
+}
+
+func TestRetryTransient_GivesUpAfterMaxAttempts(t *testing.T) {
+	fastRetry(t)
+	calls := 0
+	err := retryTransient(context.Background(), func() error {
+		calls++
+		return &apiError{StatusCode: 503, Body: "still down"}
+	})
+	if err == nil {
+		t.Fatal("expected error after max retries, got nil")
+	}
+	if !strings.Contains(err.Error(), "after ") {
+		t.Errorf("error should mention attempt count: %v", err)
+	}
+	if calls != maxRetries+1 {
+		t.Errorf("expected %d calls, got %d", maxRetries+1, calls)
+	}
+}
+
+func TestRetryTransient_DoesNotRetryPermanentError(t *testing.T) {
+	calls := 0
+	err := retryTransient(context.Background(), func() error {
+		calls++
+		return &apiError{StatusCode: 400, Body: "bad request"}
+	})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if calls != 1 {
+		t.Errorf("4xx should not be retried, got %d calls", calls)
+	}
+}
+
+func TestRetryTransient_RespectsContextCancel(t *testing.T) {
+	// Set backoff to something long enough that we definitely cancel mid-sleep.
+	origInitial := initialBackoff
+	initialBackoff = 500 * time.Millisecond
+	t.Cleanup(func() { initialBackoff = origInitial })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := int32(0)
+	done := make(chan error, 1)
+	go func() {
+		done <- retryTransient(ctx, func() error {
+			atomic.AddInt32(&calls, 1)
+			return &apiError{StatusCode: 503}
+		})
+	}()
+	// Let the first attempt happen, then cancel mid-backoff.
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("expected context.Canceled, got %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("retryTransient didn't return after context cancel")
+	}
+	if atomic.LoadInt32(&calls) == 0 {
+		t.Error("expected at least one call before cancel")
+	}
+}
+
+// Integration test: an http endpoint that 503s twice then succeeds. Verifies
+// the retry layer + HTTP layer + envelope unwrap all cooperate.
+func TestGetInstanceStatus_RetriesThrough503(t *testing.T) {
+	fastRetry(t)
+	hits := int32(0)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		n := atomic.AddInt32(&hits, 1)
+		w.Header().Set("Content-Type", "application/json")
+		if n < 3 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(`<html>nginx 503</html>`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"data": {"id": "i-1", "provisioned": true, "operations": [], "instance_url": "https://x.example"}}`))
+	}))
+	defer srv.Close()
+
+	c := New("unused", srv.URL, "tok")
+	status, err := c.GetInstanceStatus(context.Background(), "org", "app", "i-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if status == nil || status.ID != "i-1" {
+		t.Errorf("got %+v, want status with ID=i-1", status)
+	}
+	if got := atomic.LoadInt32(&hits); got != 3 {
+		t.Errorf("expected 3 hits (2 fail + 1 success), got %d", got)
 	}
 }

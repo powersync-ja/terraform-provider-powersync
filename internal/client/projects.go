@@ -36,6 +36,8 @@ type listProjectsAPIResponse struct {
 }
 
 // ListProjects fetches every project in an org by following cursor pagination.
+// Each page request retries on transient errors; a single failed page does not
+// restart the whole walk.
 // Returns the accumulated list and the server-reported total from the last page
 // (useful as a sanity check; the two should match).
 func (c *Client) ListProjects(ctx context.Context, orgID string) ([]Project, int, error) {
@@ -45,7 +47,10 @@ func (c *Client) ListProjects(ctx context.Context, orgID string) ([]Project, int
 	for {
 		req := listProjectsRequest{OrgID: &orgID, Cursor: cursor}
 		var out listProjectsAPIResponse
-		if err := c.post(ctx, "/api/accounts/v5/apps/list", req, &out); err != nil {
+		err := retryTransient(ctx, func() error {
+			return c.post(ctx, "/api/accounts/v5/apps/list", req, &out)
+		})
+		if err != nil {
 			return nil, 0, err
 		}
 		all = append(all, out.Data.Objects...)
@@ -63,10 +68,12 @@ func (c *Client) ListProjects(ctx context.Context, orgID string) ([]Project, int
 }
 
 // GetProjectByID fetches a single project via /apps/get. Returns nil, nil
-// when the project does not exist (404).
+// when the project does not exist (404). Retries on transient errors.
 func (c *Client) GetProjectByID(ctx context.Context, orgID, id string) (*Project, error) {
 	var out Project
-	err := c.postData(ctx, "/api/accounts/v5/apps/get", map[string]string{"id": id}, &out)
+	err := retryTransient(ctx, func() error {
+		return c.postData(ctx, "/api/accounts/v5/apps/get", map[string]string{"id": id}, &out)
+	})
 	if err != nil {
 		if IsNotFound(err) {
 			return nil, nil

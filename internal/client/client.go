@@ -61,6 +61,63 @@ func IsNotFound(err error) bool {
 	return err != nil && errors.As(err, &e) && e.StatusCode == http.StatusNotFound
 }
 
+// Retry parameters. Tuned so a transient ~30-second API blip is invisible to
+// the user but a sustained outage fails fast enough to be actionable.
+// Declared as `var` (not `const`) so unit tests can lower them temporarily.
+var (
+	maxRetries     = 4                // 4 retries = 5 total attempts
+	initialBackoff = 1 * time.Second  // first sleep before retry
+	maxBackoff     = 16 * time.Second // upper bound per attempt
+)
+
+// isTransient reports whether err is worth retrying. Currently: 5xx API errors,
+// and any error that isn't a structured apiError (i.e. network / transport /
+// decode failures, which usually indicate a connection or body truncation).
+// 4xx errors are NOT retried — the request itself is wrong, retrying won't help.
+func isTransient(err error) bool {
+	if err == nil {
+		return false
+	}
+	var apiErr *apiError
+	if errors.As(err, &apiErr) {
+		return apiErr.StatusCode >= 500 && apiErr.StatusCode < 600
+	}
+	// Non-apiError means the request never made it to a structured API response
+	// (network failure, body read failure, etc.) — worth retrying.
+	return true
+}
+
+// retryTransient runs fn up to maxRetries+1 times, retrying on transient errors
+// with exponential backoff. Returns the last error if all attempts fail, or
+// ctx.Err() if the context is cancelled mid-backoff. Use only for *idempotent*
+// operations — never for create/deploy/destroy where a retry could duplicate work.
+func retryTransient(ctx context.Context, fn func() error) error {
+	backoff := initialBackoff
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff):
+			}
+			backoff *= 2
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+		}
+		err := fn()
+		if err == nil {
+			return nil
+		}
+		if !isTransient(err) {
+			return err
+		}
+		lastErr = err
+	}
+	return fmt.Errorf("after %d attempts: %w", maxRetries+1, lastErr)
+}
+
 func (c *Client) doRequest(ctx context.Context, method, url string, body, out any) error {
 	var bodyReader io.Reader
 	if body != nil {

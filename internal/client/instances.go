@@ -194,9 +194,12 @@ func (c *Client) DeployInstance(ctx context.Context, req DeployInstanceRequest) 
 }
 
 // GetInstanceConfig returns nil, nil when the instance does not exist (404).
+// Retries on transient errors.
 func (c *Client) GetInstanceConfig(ctx context.Context, orgID, appID, id string) (*InstanceConfig, error) {
 	var out InstanceConfig
-	err := c.managementPostData(ctx, "/api/v1/instances/config", instanceActionRequest{OrgID: orgID, AppID: appID, ID: id}, &out)
+	err := retryTransient(ctx, func() error {
+		return c.managementPostData(ctx, "/api/v1/instances/config", instanceActionRequest{OrgID: orgID, AppID: appID, ID: id}, &out)
+	})
 	if err != nil {
 		if IsNotFound(err) {
 			return nil, nil
@@ -206,9 +209,13 @@ func (c *Client) GetInstanceConfig(ctx context.Context, orgID, appID, id string)
 	return &out, nil
 }
 
+// GetInstanceStatus retries on transient errors.
 func (c *Client) GetInstanceStatus(ctx context.Context, orgID, appID, id string) (*InstanceStatus, error) {
 	var out InstanceStatus
-	if err := c.managementPostData(ctx, "/api/v1/instances/status", instanceActionRequest{OrgID: orgID, AppID: appID, ID: id}, &out); err != nil {
+	err := retryTransient(ctx, func() error {
+		return c.managementPostData(ctx, "/api/v1/instances/status", instanceActionRequest{OrgID: orgID, AppID: appID, ID: id}, &out)
+	})
+	if err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -255,11 +262,15 @@ func (c *Client) WaitForOperation(ctx context.Context, orgID, appID, instanceID,
 }
 
 // TestConnection verifies DB connectivity before deploying. Returns an error if
-// the API reports the connection failed.
+// the API reports the connection failed. Retries on transient errors — testing
+// a connection is idempotent (no resources created).
 func (c *Client) TestConnection(ctx context.Context, orgID, appID, instanceID string, conn Connection) error {
 	req := testConnectionRequest{OrgID: orgID, AppID: appID, ID: instanceID, Connection: conn}
 	var out testConnectionResponse
-	if err := c.managementPostData(ctx, "/api/v1/connections/test", req, &out); err != nil {
+	err := retryTransient(ctx, func() error {
+		return c.managementPostData(ctx, "/api/v1/connections/test", req, &out)
+	})
+	if err != nil {
 		return err
 	}
 	if !out.Success {
@@ -273,19 +284,26 @@ func (c *Client) TestConnection(ctx context.Context, orgID, appID, instanceID st
 
 // ListInstances returns the lightweight summary list for all instances in a
 // project. The endpoint has no pagination — strict validation, all results in
-// one shot.
+// one shot. Retries on transient errors.
 func (c *Client) ListInstances(ctx context.Context, orgID, appID string) ([]InstanceSummary, error) {
 	req := listInstancesRequest{OrgID: orgID, AppID: appID}
 	var out listInstancesResponse
-	if err := c.managementPostData(ctx, "/api/v1/instances/list", req, &out); err != nil {
+	err := retryTransient(ctx, func() error {
+		return c.managementPostData(ctx, "/api/v1/instances/list", req, &out)
+	})
+	if err != nil {
 		return nil, err
 	}
 	return out.Instances, nil
 }
 
+// ListRegions retries on transient errors.
 func (c *Client) ListRegions(ctx context.Context) ([]Region, error) {
 	var out listRegionsResponse
-	if err := c.managementGetData(ctx, "/api/v1/regions", &out); err != nil {
+	err := retryTransient(ctx, func() error {
+		return c.managementGetData(ctx, "/api/v1/regions", &out)
+	})
+	if err != nil {
 		return nil, err
 	}
 	return out.Regions, nil

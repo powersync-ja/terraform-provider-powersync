@@ -13,9 +13,13 @@ type getOrgResponse struct {
 	Data Organization `json:"data"`
 }
 
+// GetOrganizationByID retries on transient errors.
 func (c *Client) GetOrganizationByID(ctx context.Context, id string) (*Organization, error) {
 	var out getOrgResponse
-	if err := c.post(ctx, "/api/accounts/v5/organizations/get", map[string]string{"id": id}, &out); err != nil {
+	err := retryTransient(ctx, func() error {
+		return c.post(ctx, "/api/accounts/v5/organizations/get", map[string]string{"id": id}, &out)
+	})
+	if err != nil {
 		return nil, err
 	}
 	return &out.Data, nil
