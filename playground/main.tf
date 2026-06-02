@@ -19,11 +19,6 @@ provider "powersync" {
 
 locals {
   org_id = "69e1ded296488e0007395292"
-
-  # Supabase project we replicate from.
-  supabase_db_host = "db.ltvtrksiearsqhvyltkq.supabase.co"
-  supabase_db_name = "postgres"
-  supabase_db_user = "powersync_role"
 }
 
 variable "replication_password" {
@@ -60,11 +55,11 @@ resource "powersync_instance" "main" {
   replication_connection {
     type     = "postgresql"
     name     = "supabase-main"
-    hostname = local.supabase_db_host
+    hostname = "db.ltvtrksiearsqhvyltkq.supabase.co"
     port     = 5432
-    username = local.supabase_db_user
+    username = "powersync_role"
     password = var.replication_password
-    database = local.supabase_db_name
+    database = "postgres"
     sslmode  = "verify-full"
     # cacert omitted: PowerSync ships Supabase's CA cert by default with verify-full.
   }
