@@ -1,6 +1,6 @@
 # Terraform Provider for PowerSync
 
-[![Terraform Registry](https://img.shields.io/badge/registry-powersync%2Fpowersync-623CE4)](https://registry.terraform.io/providers/powersync/powersync)
+[![Terraform Registry](https://img.shields.io/badge/registry-powersync-ja%2Fpowersync-623CE4)](https://registry.terraform.io/providers/powersync-ja/powersync/latest/docs)
 
 The official [PowerSync](https://www.powersync.com/) Terraform provider. Manage your PowerSync Cloud projects and instances as Infrastructure-as-Code, alongside the rest of your infrastructure.
 
