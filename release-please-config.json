@@ -1,6 +1,7 @@
 {
   "release-type": "simple",
-  "bootstrap-sha": "00c93e123efa7f80b15d832e073c5a05572ae4b6",
+  "initial-version": "0.0.0",
+  "bump-minor-pre-major": true,
   "packages": {
     ".": {}
   }
