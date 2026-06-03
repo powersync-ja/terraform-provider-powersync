@@ -19,7 +19,7 @@ If you've never used Terraform before: Terraform is a tool that turns a descript
 4. Export it:
 
    ```sh
-   export PS_PAT_TOKEN="pst_..."
+   export PS_PAT_TOKEN="jpt_..."
    ```
 
 ## 2. Find your organization ID
@@ -35,7 +35,7 @@ terraform {
   required_providers {
     powersync = {
       source  = "powersync-ja/powersync"
-      version = "~> 0.1.0"
+      version = "~> 0.1"
     }
   }
 }

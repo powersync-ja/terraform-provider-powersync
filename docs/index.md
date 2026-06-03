@@ -23,7 +23,7 @@ The provider authenticates against the PowerSync API using a **personal access t
 2. Export it as an environment variable before running Terraform:
 
    ```sh
-   export PS_PAT_TOKEN="pst_..."
+   export PS_PAT_TOKEN="jpt_..."
    ```
 
 The token is read automatically by the provider; you do not need to reference it in your `provider "powersync"` block. If you must pass it explicitly (e.g. inside a CI pipeline that already maps secrets into Terraform variables), use the `admin_token` argument — but prefer the environment variable to keep the token out of state files and plan output.
@@ -35,7 +35,7 @@ terraform {
   required_providers {
     powersync = {
       source  = "powersync-ja/powersync"
-      version = "~> 0.1.0"
+      version = "~> 0.1"
     }
   }
 }
@@ -58,7 +58,7 @@ terraform {
   required_providers {
     powersync = {
       source  = "powersync-ja/powersync"
-      version = "~> 0.1.0"
+      version = "~> 0.1"
     }
   }
 }
@@ -77,7 +77,7 @@ resource "powersync_project" "main" {
 ```
 
 ```sh
-export PS_PAT_TOKEN="pst_..."
+export PS_PAT_TOKEN="jpt_..."
 terraform init
 terraform apply
 ```

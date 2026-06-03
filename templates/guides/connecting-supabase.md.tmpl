@@ -106,7 +106,7 @@ variable "replication_password" {
 Apply it:
 
 ```sh
-export PS_PAT_TOKEN="pst_..."
+export PS_PAT_TOKEN="jpt_..."
 export TF_VAR_replication_password="<the password you set on powersync_role>"
 terraform apply
 ```
