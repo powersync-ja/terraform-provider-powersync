@@ -89,7 +89,7 @@ jobs:
           cat > "$HOME/.terraformrc" <<EOF
           provider_installation {
             dev_overrides {
-              "powersync/powersync" = "$(go env GOPATH)/bin"
+              "powersync-ja/powersync" = "$(go env GOPATH)/bin"
             }
             direct {}
           }

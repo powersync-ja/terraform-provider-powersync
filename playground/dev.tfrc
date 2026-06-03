@@ -8,7 +8,7 @@
 # If your GOBIN is different, run `go env GOBIN` to check.
 provider_installation {
   dev_overrides {
-    "powersync/powersync" = "/Users/amine/go/bin"
+    "powersync-ja/powersync" = "/Users/amine/go/bin"
   }
   direct {}
 }

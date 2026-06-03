@@ -22,7 +22,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.terraform.io/powersync/powersync",
+		Address: "registry.terraform.io/powersync-ja/powersync",
 		Debug:   debug,
 	}
 
