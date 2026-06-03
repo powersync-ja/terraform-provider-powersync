@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     powersync = {
-      source  = "powersync/powersync"
+      source  = "powersync-ja/powersync"
       version = "~> 0.1.0"
     }
   }

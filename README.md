@@ -23,7 +23,7 @@ If you've never used Terraform before, check the [Getting Started guide](docs/gu
 terraform {
   required_providers {
     powersync = {
-      source  = "powersync/powersync"
+      source  = "powersync-ja/powersync"
       version = "~> 0.1.0"
     }
   }
@@ -77,7 +77,7 @@ variable "replication_password" {
 ```
 
 ```sh
-export PS_PAT_TOKEN="pst_..."                       # generate from PowerSync dashboard
+export PS_PAT_TOKEN="jpt_..."                       # generate from PowerSync dashboard
 export TF_VAR_replication_password="..."
 terraform init
 terraform apply
@@ -87,7 +87,7 @@ terraform apply
 
 Generated documentation is hosted on the Terraform Registry:
 
-- [Provider overview](https://registry.terraform.io/providers/powersync/powersync/latest/docs)
+- [Provider overview](https://registry.terraform.io/providers/powersync-ja/powersync/latest/docs)
 - [Getting Started guide](docs/guides/getting-started.md)
 - [Connecting Supabase guide](docs/guides/connecting-supabase.md)
 - [`powersync_instance` reference](docs/resources/instance.md)

@@ -1,5 +1,5 @@
 ---
-page_title: "Getting Started"
+page_title: "1. Getting Started"
 subcategory: "Guides"
 description: |-
   Walk through provisioning a PowerSync instance from an empty Terraform project to a deployed, sync-ready environment.
@@ -19,7 +19,7 @@ If you've never used Terraform before: Terraform is a tool that turns a descript
 4. Export it:
 
    ```sh
-   export PS_PAT_TOKEN="pst_..."
+   export PS_PAT_TOKEN="jpt_..."
    ```
 
 ## 2. Find your organization ID
@@ -34,7 +34,7 @@ Create a new directory for the project and a `main.tf` file inside it:
 terraform {
   required_providers {
     powersync = {
-      source  = "powersync/powersync"
+      source  = "powersync-ja/powersync"
       version = "~> 0.1.0"
     }
   }

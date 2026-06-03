@@ -1,5 +1,5 @@
 ---
-page_title: "Connecting Supabase"
+page_title: "2. Connecting Supabase"
 subcategory: "Guides"
 description: |-
   Set up a Supabase Postgres as the replication source for a PowerSync instance — DB role, publication, network reachability, and JWT validation.
@@ -106,7 +106,7 @@ variable "replication_password" {
 Apply it:
 
 ```sh
-export PS_PAT_TOKEN="pst_..."
+export PS_PAT_TOKEN="jpt_..."
 export TF_VAR_replication_password="<the password you set on powersync_role>"
 terraform apply
 ```
