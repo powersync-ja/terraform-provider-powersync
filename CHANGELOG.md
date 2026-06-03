@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/powersync-ja/terraform-provider-powersync/compare/v0.1.1...v0.1.2) (2026-06-03)
+
+
+### Bug Fixes
+
+* update PAT token and provider version in documentation and examples to reflect correct naming convention ([cee2a9e](https://github.com/powersync-ja/terraform-provider-powersync/commit/cee2a9e0ec6b75ed9aa30d84ded4535b76ff79eb))
+
 ## [0.1.1](https://github.com/powersync-ja/terraform-provider-powersync/compare/v0.1.0...v0.1.1) (2026-06-03)
 
 
