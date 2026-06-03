@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/powersync-ja/terraform-provider-powersync/compare/v0.1.0...v0.1.1) (2026-06-03)
+
+
+### Bug Fixes
+
+* correct Terraform Registry badge link format in README.md ([557f278](https://github.com/powersync-ja/terraform-provider-powersync/commit/557f278c2565caa6d7cda819b9752851223cbe7c))
+* update provider address and configuration to reflect new naming convention ([b7301bd](https://github.com/powersync-ja/terraform-provider-powersync/commit/b7301bd3a9043c42f325862a15499e98806a5bb1))
+
 ## 0.1.0 (2026-06-02)
 
 
