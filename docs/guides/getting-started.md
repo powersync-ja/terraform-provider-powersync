@@ -19,7 +19,7 @@ If you've never used Terraform before: Terraform is a tool that turns a descript
 4. Export it:
 
    ```sh
-   export PS_PAT_TOKEN="jpt_..."
+   export PS_PAT_TOKEN="pst_..."
    ```
 
 ## 2. Find your organization ID
