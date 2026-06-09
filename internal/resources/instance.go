@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -145,12 +144,13 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
+			// No UseStateForUnknown: `provisioned` is recorded at deploy time, and the
+			// API flag it derives from is unreliable. Pinning a (possibly stale) prior
+			// value into the plan can trigger "inconsistent result after apply"; letting
+			// it plan as "(known after apply)" on changes keeps apply consistent.
 			"provisioned": schema.BoolAttribute{
 				Computed:    true,
 				Description: "Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal — use `status` or `instance_url` for that.",
-				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"instance_url": schema.StringAttribute{
 				Computed:    true,
@@ -391,8 +391,9 @@ func (r *InstanceResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	// Refresh status.
-	r.refreshStatus(ctx, &plan, &resp.Diagnostics)
+	// Refresh status. Record `provisioned` as observed at deploy time; it is not
+	// re-read on later refreshes (the API flag is unreliable — see refreshStatus).
+	plan.Provisioned = types.BoolValue(r.refreshStatus(ctx, &plan, &resp.Diagnostics))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -435,7 +436,13 @@ func (r *InstanceResource) Read(ctx context.Context, req resource.ReadRequest, r
 
 	// program_version: preserve whatever the user configured in state (write-through only).
 
-	r.refreshStatus(ctx, &state, &resp.Diagnostics)
+	// provisioned: preserve the value recorded at the last deploy rather than
+	// re-reading the unreliable live flag (which would show phantom drift). Seed
+	// it from the API only when state has no prior value — i.e. on import.
+	live := r.refreshStatus(ctx, &state, &resp.Diagnostics)
+	if state.Provisioned.IsNull() || state.Provisioned.IsUnknown() {
+		state.Provisioned = types.BoolValue(live)
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -481,7 +488,8 @@ func (r *InstanceResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
-	r.refreshStatus(ctx, &plan, &resp.Diagnostics)
+	// Record `provisioned` as observed at this deploy; see Create / refreshStatus.
+	plan.Provisioned = types.BoolValue(r.refreshStatus(ctx, &plan, &resp.Diagnostics))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -563,15 +571,22 @@ func (r *InstanceResource) ImportState(ctx context.Context, req resource.ImportS
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-func (r *InstanceResource) refreshStatus(ctx context.Context, state *instanceModel, diags *diag.Diagnostics) {
+// refreshStatus updates the reliable derived fields (status, instance_url) from
+// the live API and returns the API's `provisioned` flag. It deliberately does
+// NOT write `provisioned` into state: that flag flip-flops (it reports false even
+// for healthy long-lived instances — see client.InstanceStatus), so tracking it
+// live produces phantom drift and breaks apply consistency. Callers decide what
+// to do with the returned value (Create/Update record it as the deploy-time
+// value; Read uses it only to seed an imported resource).
+func (r *InstanceResource) refreshStatus(ctx context.Context, state *instanceModel, diags *diag.Diagnostics) bool {
 	status, err := r.client.GetInstanceStatus(ctx, state.OrgID.ValueString(), state.ProjectID.ValueString(), state.ID.ValueString())
 	if err != nil {
 		diags.AddWarning("Could not read instance status", err.Error())
-		return
+		return false
 	}
 	state.Status = types.StringValue(status.DeriveStatus())
-	state.Provisioned = types.BoolValue(status.Provisioned)
 	state.InstanceURL = stringOrNull(status.InstanceURL)
+	return status.Provisioned
 }
 
 func buildDeployRequest(plan instanceModel, instanceID, orgID, projectID string) client.DeployInstanceRequest {
