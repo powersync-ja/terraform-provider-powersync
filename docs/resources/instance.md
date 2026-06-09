@@ -87,7 +87,7 @@ output "instance_url" {
 - `client_auth` (Block List) Client JWT authentication configuration. (see [below for nested schema](#nestedblock--client_auth))
 - `program_version` (Block List) PowerSync service version constraint. (see [below for nested schema](#nestedblock--program_version))
 - `region` (String) Region the instance runs in. One of: `eu`, `us`, `jp`, `au`, `br`. Defaults to the project's `default_region` when omitted. Changing this forces a new instance (the management API does not support cross-region moves).
-- `replication_connection` (Block List) Source database replication connection. At least one is required for a functional instance. Specify either `uri` *or* the individual host/port/user/pass fields — not both. (see [below for nested schema](#nestedblock--replication_connection))
+- `replication_connection` (Block List) Source database replication connection. At most one connection is supported per instance. Specify either `uri` *or* the individual host/port/user/pass fields — not both. (see [below for nested schema](#nestedblock--replication_connection))
 - `sync_config_content` (String) Sync config YAML (bucket definitions or streams). Omit to let CI/CD or the dashboard manage the sync config independently — Terraform will read back whatever is currently deployed. See https://docs.powersync.com/sync/overview.
 
 ### Read-Only

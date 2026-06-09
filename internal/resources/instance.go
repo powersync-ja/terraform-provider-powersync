@@ -6,12 +6,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/powersync/terraform-provider-powersync/internal/client"
 )
@@ -159,13 +162,22 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 		},
 		Blocks: map[string]schema.Block{
 			"replication_connection": schema.ListNestedBlock{
-				Description: "Source database replication connection. At least one is required for a functional instance. " +
+				Description: "Source database replication connection. At most one connection is supported per instance. " +
 					"Specify either `uri` *or* the individual host/port/user/pass fields — not both.",
+				// PowerSync currently supports a single replication connection per instance.
+				// The API models connections as a list, so when multi-connection support
+				// lands this SizeAtMost(1) can be relaxed without a schema-shape change.
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"type": schema.StringAttribute{
 							Required:    true,
 							Description: "Source database type. One of: `postgresql`, `mongodb`, `mysql`, `mssql`. Determines which other fields apply.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("postgresql", "mongodb", "mysql", "mssql"),
+							},
 						},
 						"name": schema.StringAttribute{
 							Optional:    true,
@@ -209,6 +221,9 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 							Optional:    true,
 							Description: "TLS verification mode. PowerSync accepts only `verify-full` (default; verifies cert chain + hostname) and `verify-ca` (verifies cert chain only). " +
 								"Weaker modes like `require`/`prefer`/`disable` are rejected. Applies to PostgreSQL and MySQL.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("verify-full", "verify-ca"),
+							},
 						},
 						"cacert": schema.StringAttribute{
 							Optional:    true,
@@ -228,6 +243,9 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 						"post_images": schema.StringAttribute{
 							Optional:    true,
 							Description: "Change-stream `fullDocument` mode. One of: `off` (only the document key), `auto_configure` (PowerSync sets `changeStreamPreAndPostImages` on collections automatically), `read_only` (assume images are already configured upstream). MongoDB only.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("off", "auto_configure", "read_only"),
+							},
 						},
 						"schema": schema.StringAttribute{
 							Optional:    true,
@@ -238,6 +256,10 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"client_auth": schema.ListNestedBlock{
 				Description: "Client JWT authentication configuration.",
+				// A single auth configuration per instance; the API models it as a list.
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"supabase": schema.BoolAttribute{
@@ -262,6 +284,10 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"program_version": schema.ListNestedBlock{
 				Description: "PowerSync service version constraint.",
+				// A single version constraint per instance; the API models it as a list.
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"channel": schema.StringAttribute{
