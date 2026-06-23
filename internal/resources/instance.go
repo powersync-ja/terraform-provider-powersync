@@ -119,8 +119,8 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Description: "Instance name. Must be unique within the project.",
 			},
 			"region": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
+				Optional: true,
+				Computed: true,
 				Description: "Region the instance runs in. One of: `eu`, `us`, `jp`, `au`, `br`. Defaults to the project's `default_region` when omitted. " +
 					"Changing this forces a new instance (the management API does not support cross-region moves).",
 				PlanModifiers: []planmodifier.String{
@@ -129,8 +129,8 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				},
 			},
 			"sync_config_content": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
+				Optional: true,
+				Computed: true,
 				Description: "Sync config YAML (bucket definitions or streams). Omit to let CI/CD or the dashboard manage the sync config; " +
 					"Terraform will read back whatever is currently deployed. See https://docs.powersync.com/sync/overview.",
 				PlanModifiers: []planmodifier.String{
@@ -188,7 +188,7 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 							Description: "Identifier used to reference this connection from the sync config (e.g. when an instance has multiple source DBs). Defaults to `default` server-side. See https://docs.powersync.com/sync/overview.",
 						},
 						"uri": schema.StringAttribute{
-							Optional:    true,
+							Optional: true,
 							Description: "Full connection URI (e.g. `postgresql://user:pass@host:5432/db`, `mongodb+srv://...`, `mysql://...`). " +
 								"Mutually exclusive with the host/port/username/password/database fields. Applies to all DB types.",
 						},
@@ -197,28 +197,28 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 							Description: "Database server hostname. Applies to all DB types when `uri` is not used.",
 						},
 						"port": schema.Int64Attribute{
-							Optional:    true,
+							Optional: true,
 							Description: "Database server port. Typical defaults: PostgreSQL 5432, MongoDB 27017, MySQL 3306, MSSQL 1433. " +
 								"Applies to all DB types when `uri` is not used.",
 						},
 						"username": schema.StringAttribute{
-							Optional:    true,
+							Optional: true,
 							Description: "Database user PowerSync connects as. Should be a dedicated replication user with the minimum required privileges, not an admin account. " +
 								"Applies to all DB types when `uri` is not used.",
 						},
 						"password": schema.StringAttribute{
-							Optional:    true,
-							Sensitive:   true,
+							Optional:  true,
+							Sensitive: true,
 							Description: "Password for the replication user. Stored server-side as a secret; redacted in plan/apply output. " +
 								"Applies to all DB types when `uri` is not used.",
 						},
 						"database": schema.StringAttribute{
-							Optional:    true,
+							Optional: true,
 							Description: "Database name within the server (e.g. `postgres` for PostgreSQL, the MongoDB database name, the MySQL schema name). " +
 								"Applies to PostgreSQL, MongoDB, and MySQL.",
 						},
 						"sslmode": schema.StringAttribute{
-							Optional:    true,
+							Optional: true,
 							Description: "TLS verification mode. PowerSync accepts only `verify-full` (default; verifies cert chain + hostname) and `verify-ca` (verifies cert chain only). " +
 								"Weaker modes like `require`/`prefer`/`disable` are rejected. Applies to PostgreSQL and MySQL.",
 							Validators: []validator.String{
@@ -226,7 +226,7 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 							},
 						},
 						"cacert": schema.StringAttribute{
-							Optional:    true,
+							Optional: true,
 							Description: "PEM-encoded CA certificate used to verify the server cert under `verify-full`/`verify-ca`. " +
 								"PowerSync bundles the CA for three managed PostgreSQL providers (Supabase, AWS RDS, and Azure Postgres), so leave this empty for those. " +
 								"Supply it for any other source: other Postgres hosts, self-hosted databases, and MySQL. Applies to PostgreSQL and MySQL.",

@@ -71,7 +71,7 @@ type DeployOperation struct {
 }
 
 type InstanceStatus struct {
-	ID          string            `json:"id"`
+	ID string `json:"id"`
 	// Provisioned is true when sync rules have been deployed.
 	// Use InstanceURL + Operations (via DeriveStatus) for liveness.
 	Provisioned bool              `json:"provisioned"`

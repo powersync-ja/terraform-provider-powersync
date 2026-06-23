@@ -26,14 +26,14 @@ func NewProjectResource() resource.Resource {
 }
 
 type projectModel struct {
-	ID            types.String `tfsdk:"id"`
-	OrgID         types.String `tfsdk:"org_id"`
-	Name          types.String `tfsdk:"name"`
-	Region        types.String `tfsdk:"region"`
-	VCSMode       types.String `tfsdk:"vcs_mode"`
-	Trial         types.Bool   `tfsdk:"trial"`
-	Locked        types.Bool   `tfsdk:"locked"`
-	ForceDestroy  types.Bool   `tfsdk:"force_destroy"`
+	ID           types.String `tfsdk:"id"`
+	OrgID        types.String `tfsdk:"org_id"`
+	Name         types.String `tfsdk:"name"`
+	Region       types.String `tfsdk:"region"`
+	VCSMode      types.String `tfsdk:"vcs_mode"`
+	Trial        types.Bool   `tfsdk:"trial"`
+	Locked       types.Bool   `tfsdk:"locked"`
+	ForceDestroy types.Bool   `tfsdk:"force_destroy"`
 }
 
 func (r *ProjectResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -63,7 +63,7 @@ func (r *ProjectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description: "Human-readable project name. Only mutable field on update.",
 			},
 			"region": schema.StringAttribute{
-				Required:    true,
+				Required: true,
 				Description: "Default region for instances created under this project. One of: `eu`, `us`, `jp`, `au`, `br`. " +
 					"Surfaces as `default_region` on the `powersync_project` data source. Changing this forces a new project.",
 				PlanModifiers: []planmodifier.String{
