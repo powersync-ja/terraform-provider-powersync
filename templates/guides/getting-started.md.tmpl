@@ -130,6 +130,6 @@ This destroys both the instance and the project. If the project owns unmanaged i
 
 ## Where to go next
 
-- [Connecting Supabase](connecting-supabase.md) — Supabase-specific gotchas (publication setup, JWT modes, IPv4 add-on).
+- [Connecting a source database](connecting-source-database.md) guide — per-type connection fields for PostgreSQL, MongoDB, MySQL, and SQL Server.
 - [`powersync_instance` reference](../resources/instance.md) — full schema for the instance resource.
 - [PowerSync sync config docs](https://docs.powersync.com/sync/overview) — what to put in `sync_config_content`.

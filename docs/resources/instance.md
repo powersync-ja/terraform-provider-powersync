@@ -28,25 +28,25 @@ resource "powersync_instance" "production" {
   name       = "production"
   # region defaults to the project's region when omitted.
 
-  # Replicate from a Supabase Postgres. PowerSync ships Supabase's CA cert by
-  # default, so verify-full works without a cacert. See PowerSync's connection
-  # docs for MongoDB, MySQL, and MSSQL examples.
+  # Replicate from a source database. PowerSync supports postgresql, mongodb,
+  # mysql, and mssql. Set sslmode to verify-full; PowerSync bundles CA certs for
+  # Supabase, AWS RDS, and Azure Postgres, so no cacert is needed for those. See
+  # the "Connecting a source database" guide for the per-type fields.
   replication_connection {
     type     = "postgresql"
-    name     = "supabase-main"
-    hostname = "db.abcdefghijklmnopqrst.supabase.co"
+    name     = "primary"
+    hostname = "db.example.com"
     port     = 5432
     database = "postgres"
-    username = "powersync_role"
+    username = "powersync"
     password = var.replication_password
     sslmode  = "verify-full"
   }
 
-  # Validate client JWTs issued by Supabase Auth (asymmetric / new projects).
-  # For legacy HS256 Supabase projects, see the inline-JWKS variant in the
-  # connecting-supabase guide.
+  # Validate client JWTs by pointing PowerSync at your auth provider's JWKS
+  # endpoint.
   client_auth {
-    supabase               = true
+    jwks_uri               = "https://auth.example.com/.well-known/jwks.json"
     allow_temporary_tokens = false
   }
 
@@ -126,10 +126,10 @@ Required:
 
 Optional:
 
-- `cacert` (String) PEM-encoded CA certificate used to verify the server cert under `verify-full`/`verify-ca`. Only needed when the source DB's CA is not in PowerSync's built-in trust store — e.g. self-hosted Postgres with a private CA. Managed providers (Supabase, AWS RDS, Azure Postgres) are trusted by default; leave this empty for those. Applies to PostgreSQL and MySQL.
+- `cacert` (String) PEM-encoded CA certificate used to verify the server cert under `verify-full`/`verify-ca`. PowerSync bundles the CA for three managed PostgreSQL providers — Supabase, AWS RDS, and Azure Postgres — so leave this empty for those. Supply it for any other source: other Postgres hosts, self-hosted databases, and MySQL. Applies to PostgreSQL and MySQL.
 - `client_certificate` (String) PEM-encoded client certificate for mutual TLS (mTLS). Pair with `client_private_key`. Applies to PostgreSQL and MySQL.
 - `client_private_key` (String, Sensitive) PEM-encoded client private key for mutual TLS (mTLS). Pair with `client_certificate`. Stored server-side as a secret. Applies to PostgreSQL and MySQL.
-- `database` (String) Database name within the server (e.g. `postgres` for Supabase, the MongoDB database name, the MySQL schema name). Applies to PostgreSQL, MongoDB, and MySQL.
+- `database` (String) Database name within the server (e.g. `postgres` for PostgreSQL, the MongoDB database name, the MySQL schema name). Applies to PostgreSQL, MongoDB, and MySQL.
 - `hostname` (String) Database server hostname. Applies to all DB types when `uri` is not used.
 - `name` (String) Human-readable display name for this connection. Surfaced in the PowerSync dashboard; has no functional effect.
 - `password` (String, Sensitive) Password for the replication user. Stored server-side as a secret; redacted in plan/apply output. Applies to all DB types when `uri` is not used.

@@ -214,7 +214,7 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 						},
 						"database": schema.StringAttribute{
 							Optional:    true,
-							Description: "Database name within the server (e.g. `postgres` for Supabase, the MongoDB database name, the MySQL schema name). " +
+							Description: "Database name within the server (e.g. `postgres` for PostgreSQL, the MongoDB database name, the MySQL schema name). " +
 								"Applies to PostgreSQL, MongoDB, and MySQL.",
 						},
 						"sslmode": schema.StringAttribute{
@@ -228,8 +228,8 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 						"cacert": schema.StringAttribute{
 							Optional:    true,
 							Description: "PEM-encoded CA certificate used to verify the server cert under `verify-full`/`verify-ca`. " +
-								"Only needed when the source DB's CA is not in PowerSync's built-in trust store — e.g. self-hosted Postgres with a private CA. " +
-								"Managed providers (Supabase, AWS RDS, Azure Postgres) are trusted by default; leave this empty for those. Applies to PostgreSQL and MySQL.",
+								"PowerSync bundles the CA for three managed PostgreSQL providers — Supabase, AWS RDS, and Azure Postgres — so leave this empty for those. " +
+								"Supply it for any other source: other Postgres hosts, self-hosted databases, and MySQL. Applies to PostgreSQL and MySQL.",
 						},
 						"client_certificate": schema.StringAttribute{
 							Optional:    true,
