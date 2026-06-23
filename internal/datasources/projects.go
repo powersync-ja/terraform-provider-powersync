@@ -41,7 +41,7 @@ func (d *ProjectsDataSource) Metadata(_ context.Context, req datasource.Metadata
 
 func (d *ProjectsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Lists all PowerSync projects in an organization. Paginates through every result transparently.",
+		Description: "Lists all PowerSync projects in an organization. Follows pagination to return every project.",
 		Attributes: map[string]schema.Attribute{
 			"org_id": schema.StringAttribute{
 				Required:    true,

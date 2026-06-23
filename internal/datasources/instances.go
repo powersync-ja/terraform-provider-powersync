@@ -39,7 +39,7 @@ func (d *InstancesDataSource) Metadata(_ context.Context, req datasource.Metadat
 
 func (d *InstancesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Lists all PowerSync instances in a project. Returns a lightweight summary per instance — for region, URL, status, or sync config use the `powersync_instance` data source on a specific id.",
+		Description: "Lists all PowerSync instances in a project. Returns a lightweight summary per instance; for region, URL, status, or sync config use the `powersync_instance` data source on a specific id.",
 		Attributes: map[string]schema.Attribute{
 			"org_id": schema.StringAttribute{
 				Required:    true,

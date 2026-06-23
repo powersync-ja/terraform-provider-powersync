@@ -2,12 +2,12 @@
 page_title: "Data source: powersync_projects"
 subcategory: ""
 description: |-
-  Lists all PowerSync projects in an organization. Paginates through every result transparently.
+  Lists all PowerSync projects in an organization. Follows pagination to return every project.
 ---
 
 # Data source: powersync_projects
 
-Lists all PowerSync projects in an organization. Paginates through every result transparently.
+Lists all PowerSync projects in an organization. Follows pagination to return every project.
 
 ## Example Usage
 

@@ -36,7 +36,7 @@ resource "powersync_instance" "production" {
     allow_temporary_tokens = false
   }
 
-  # Sync config — describes what each client gets and how it's partitioned.
+  # Sync config describes what each client gets and how it's partitioned.
   # https://docs.powersync.com/sync/overview
   sync_config_content = <<-YAML
     config:

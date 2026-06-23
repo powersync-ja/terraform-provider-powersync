@@ -2,7 +2,7 @@
 page_title: "2. Connecting a source database"
 subcategory: "Guides"
 description: |-
-  Configure the replication_connection block for each supported source database — PostgreSQL, MongoDB, MySQL, and SQL Server — and understand what each one needs.
+  Configure the replication_connection block for each supported source database (PostgreSQL, MongoDB, MySQL, and SQL Server) and understand what each one needs.
 ---
 
 # Connecting a source database
@@ -11,15 +11,15 @@ A PowerSync instance replicates from exactly one source database, described by t
 
 PowerSync supports four source database types: `postgresql`, `mongodb`, `mysql`, and `mssql`. MySQL and SQL Server are currently in beta.
 
-This guide is about the *connection* — the fields Terraform sends to PowerSync. Each database also has **upstream prerequisites** (replication has to be enabled on the database itself) that live outside Terraform; those are linked per-section below.
+The `replication_connection` block covers the fields Terraform sends to PowerSync. Each database also has **upstream prerequisites** (replication has to be enabled on the database itself) that live outside Terraform; those are linked per-section below.
 
 ## The `replication_connection` block
 
-A few rules apply regardless of database type:
+These rules apply to every database type:
 
 - **One connection per instance.** At most one `replication_connection` block is supported.
 - **`uri` *or* discrete fields, never both.** Provide either a single `uri` (e.g. `postgresql://user:pass@host:5432/db`) or the separate `hostname`/`port`/`username`/`password`/`database` fields. They are mutually exclusive.
-- **Use a dedicated, least-privilege user.** `username` should be a replication-only user with the minimum privileges PowerSync needs — not an admin or superuser account. Keep its `password` in a Terraform variable marked `sensitive`; PowerSync stores it server-side as a secret and redacts it from plan/apply output.
+- **Use a dedicated, least-privilege user.** `username` should be a replication-only user with the minimum privileges PowerSync needs, not an admin or superuser account. Keep its `password` in a Terraform variable marked `sensitive`; PowerSync stores it server-side as a secret and redacts it from plan/apply output.
 - **`name`** is a display label shown in the dashboard and has no functional effect. **`tag`** (defaults to `default`) is how the sync config references this connection.
 
 ### Which fields apply to which database
@@ -36,18 +36,18 @@ A few rules apply regardless of database type:
 
 ## TLS (PostgreSQL and MySQL)
 
-PowerSync accepts only the two strong TLS modes — weaker ones (`require`, `prefer`, `disable`) are rejected:
+PowerSync accepts only the two strong TLS modes; weaker ones (`require`, `prefer`, `disable`) are rejected:
 
-- `sslmode = "verify-full"` (default) — verifies the certificate chain **and** hostname.
-- `sslmode = "verify-ca"` — verifies the certificate chain only.
+- `sslmode = "verify-full"` (default) verifies the certificate chain **and** hostname.
+- `sslmode = "verify-ca"` verifies the certificate chain only.
 
-For three managed **PostgreSQL** providers — **Supabase**, **AWS RDS**, and **Azure Postgres** — PowerSync bundles the CA certificate, so `verify-full` works against them without supplying anything extra. For every other case (other Postgres hosts such as Google Cloud SQL, Neon, or PlanetScale, self-hosted databases, and MySQL) you supply the server's CA via `cacert` (PEM-encoded).
+For three managed **PostgreSQL** providers (**Supabase**, **AWS RDS**, and **Azure Postgres**), PowerSync bundles the CA certificate, so `verify-full` works against them without supplying anything extra. For every other case (other Postgres hosts such as Google Cloud SQL, Neon, or PlanetScale, self-hosted databases, and MySQL) you supply the server's CA via `cacert` (PEM-encoded).
 
 For mutual TLS, supply `client_certificate` and `client_private_key` together (both PEM-encoded; the key is stored server-side as a secret).
 
 ## PostgreSQL
 
-**Upstream prerequisite:** logical replication enabled, plus a publication scoped to the tables you want synced. See [PowerSync's PostgreSQL setup docs](https://docs.powersync.com/configuration/source-db/setup#postgres) — they include provider-specific notes for Supabase, AWS RDS, Azure, Neon, and others.
+**Upstream prerequisite:** logical replication enabled, plus a publication scoped to the tables you want synced. See [PowerSync's PostgreSQL setup docs](https://docs.powersync.com/configuration/source-db/setup#postgres); they include provider-specific notes for Supabase, AWS RDS, Azure, Neon, and others.
 
 ```hcl
 replication_connection {

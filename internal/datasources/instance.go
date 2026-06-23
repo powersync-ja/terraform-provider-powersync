@@ -103,7 +103,7 @@ func (d *InstanceDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 			},
 			"provisioned": schema.BoolAttribute{
 				Computed:    true,
-				Description: "Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal — use `status` or `instance_url` for that.",
+				Description: "Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal; use `status` or `instance_url` for that.",
 			},
 			"instance_url": schema.StringAttribute{
 				Computed:    true,

@@ -87,7 +87,7 @@ func (r *ProjectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			},
 			"force_destroy": schema.BoolAttribute{
 				Optional:    true,
-				Description: "When true, deleting this project will cascade-destroy any instances under it that are NOT managed by this Terraform configuration. Defaults to false — destroy is refused if non-tracked instances exist.",
+				Description: "When true, deleting this project will cascade-destroy any instances under it that are NOT managed by this Terraform configuration. Defaults to false; destroy is refused if non-tracked instances exist.",
 			},
 		},
 	}

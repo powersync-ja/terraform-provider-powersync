@@ -6,7 +6,7 @@ description: |-
 
 # PowerSync Provider
 
-The PowerSync provider lets you manage [PowerSync Cloud](https://www.powersync.com/) resources — organizations, projects, and instances — declaratively, the same way you manage the rest of your infrastructure in Terraform.
+The PowerSync provider lets you manage [PowerSync Cloud](https://www.powersync.com/) resources (organizations, projects, and instances) declaratively, the same way you manage the rest of your infrastructure in Terraform.
 
 Typical use cases:
 
@@ -26,7 +26,7 @@ The provider authenticates against the PowerSync API using a **personal access t
    export PS_PAT_TOKEN="jpt_..."
    ```
 
-The token is read automatically by the provider; you do not need to reference it in your `provider "powersync"` block. If you must pass it explicitly (e.g. inside a CI pipeline that already maps secrets into Terraform variables), use the `admin_token` argument — but prefer the environment variable to keep the token out of state files and plan output.
+The token is read automatically by the provider; you do not need to reference it in your `provider "powersync"` block. If you must pass it explicitly (e.g. inside a CI pipeline that already maps secrets into Terraform variables), use the `admin_token` argument, but prefer the environment variable to keep the token out of state files and plan output.
 
 ## Example Usage
 
@@ -42,14 +42,14 @@ terraform {
 
 provider "powersync" {
   # admin_token is picked up from the PS_PAT_TOKEN environment variable (recommended).
-  # It can also be inlined — less secure, but if inlined via a variable the value
+  # It can also be inlined (less secure), but if inlined via a variable the value
   # itself can still be passed securely through Terraform's own env vars
   # (e.g. TF_VAR_admin_token).
   # admin_token = var.admin_token
 }
 ```
 
-A complete end-to-end example — organization lookup, project, and a fully-configured instance — lives in the [`powersync_instance` resource docs](resources/instance.md).
+A complete end-to-end example (organization lookup, project, and a fully-configured instance) lives in the [`powersync_instance` resource docs](resources/instance.md).
 
 ## Quickstart
 

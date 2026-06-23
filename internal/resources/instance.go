@@ -131,7 +131,7 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"sync_config_content": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
-				Description: "Sync config YAML (bucket definitions or streams). Omit to let CI/CD or the dashboard manage the sync config independently — " +
+				Description: "Sync config YAML (bucket definitions or streams). Omit to let CI/CD or the dashboard manage the sync config; " +
 					"Terraform will read back whatever is currently deployed. See https://docs.powersync.com/sync/overview.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -150,7 +150,7 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			// it plan as "(known after apply)" on changes keeps apply consistent.
 			"provisioned": schema.BoolAttribute{
 				Computed:    true,
-				Description: "Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal — use `status` or `instance_url` for that.",
+				Description: "Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal; use `status` or `instance_url` for that.",
 			},
 			"instance_url": schema.StringAttribute{
 				Computed:    true,
@@ -163,7 +163,7 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 		Blocks: map[string]schema.Block{
 			"replication_connection": schema.ListNestedBlock{
 				Description: "Source database replication connection. At most one connection is supported per instance. " +
-					"Specify either `uri` *or* the individual host/port/user/pass fields — not both.",
+					"Specify either `uri` *or* the individual host/port/user/pass fields, not both.",
 				// PowerSync currently supports a single replication connection per instance.
 				// The API models connections as a list, so when multi-connection support
 				// lands this SizeAtMost(1) can be relaxed without a schema-shape change.
@@ -228,7 +228,7 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 						"cacert": schema.StringAttribute{
 							Optional:    true,
 							Description: "PEM-encoded CA certificate used to verify the server cert under `verify-full`/`verify-ca`. " +
-								"PowerSync bundles the CA for three managed PostgreSQL providers — Supabase, AWS RDS, and Azure Postgres — so leave this empty for those. " +
+								"PowerSync bundles the CA for three managed PostgreSQL providers (Supabase, AWS RDS, and Azure Postgres), so leave this empty for those. " +
 								"Supply it for any other source: other Postgres hosts, self-hosted databases, and MySQL. Applies to PostgreSQL and MySQL.",
 						},
 						"client_certificate": schema.StringAttribute{
@@ -242,7 +242,7 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 						},
 						"post_images": schema.StringAttribute{
 							Optional:    true,
-							Description: "Change-stream `fullDocument` mode. One of: `off` (only the document key), `auto_configure` (PowerSync sets `changeStreamPreAndPostImages` on collections automatically), `read_only` (assume images are already configured upstream). MongoDB only.",
+							Description: "Change-stream `fullDocument` mode. One of: `off` (only the document key), `auto_configure` (PowerSync sets `changeStreamPreAndPostImages` on collections), `read_only` (assume images are already configured upstream). MongoDB only.",
 							Validators: []validator.String{
 								stringvalidator.OneOf("off", "auto_configure", "read_only"),
 							},
