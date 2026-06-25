@@ -23,15 +23,15 @@ func NewInstanceDataSource() datasource.DataSource {
 // ── Model types ──────────────────────────────────────────────────────────────
 
 type instanceDSModel struct {
-	OrgID                  types.String              `tfsdk:"org_id"`
-	ProjectID              types.String              `tfsdk:"project_id"`
-	ID                     types.String              `tfsdk:"id"`
-	Name                   types.String              `tfsdk:"name"`
-	Region                 types.String              `tfsdk:"region"`
-	Status                 types.String              `tfsdk:"status"`
-	Provisioned            types.Bool                `tfsdk:"provisioned"`
-	InstanceURL            types.String              `tfsdk:"instance_url"`
-	SyncConfigContent      types.String              `tfsdk:"sync_config_content"`
+	OrgID                  types.String                `tfsdk:"org_id"`
+	ProjectID              types.String                `tfsdk:"project_id"`
+	ID                     types.String                `tfsdk:"id"`
+	Name                   types.String                `tfsdk:"name"`
+	Region                 types.String                `tfsdk:"region"`
+	Status                 types.String                `tfsdk:"status"`
+	Provisioned            types.Bool                  `tfsdk:"provisioned"`
+	InstanceURL            types.String                `tfsdk:"instance_url"`
+	SyncConfigContent      types.String                `tfsdk:"sync_config_content"`
 	Operations             []instanceDSOperationModel  `tfsdk:"operations"`
 	ReplicationConnections []instanceDSConnectionModel `tfsdk:"replication_connection"`
 	ClientAuth             []instanceDSClientAuthModel `tfsdk:"client_auth"`
@@ -103,7 +103,7 @@ func (d *InstanceDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 			},
 			"provisioned": schema.BoolAttribute{
 				Computed:    true,
-				Description: "Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal — use `status` or `instance_url` for that.",
+				Description: "Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal; use `status` or `instance_url` for that.",
 			},
 			"instance_url": schema.StringAttribute{
 				Computed:    true,

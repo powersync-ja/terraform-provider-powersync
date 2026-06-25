@@ -2,18 +2,18 @@
 page_title: "Data source: powersync_instances"
 subcategory: ""
 description: |-
-  Lists all PowerSync instances in a project. Returns a lightweight summary per instance — for region, URL, status, or sync config use the powersync_instance data source on a specific id.
+  Lists all PowerSync instances in a project. Returns a lightweight summary per instance; for region, URL, status, or sync config use the powersync_instance data source on a specific id.
 ---
 
 # Data source: powersync_instances
 
-Lists all PowerSync instances in a project. Returns a lightweight summary per instance — for region, URL, status, or sync config use the `powersync_instance` data source on a specific id.
+Lists all PowerSync instances in a project. Returns a lightweight summary per instance; for region, URL, status, or sync config use the `powersync_instance` data source on a specific id.
 
 ## Example Usage
 
 ```terraform
-# List every instance under a project. Useful for inventory/auditing or to look
-# up an instance ID by name without hard-coding it.
+# List every instance under a project to take inventory or find an instance ID
+# by name without hard-coding it.
 data "powersync_instances" "all" {
   org_id     = "64b3f8e1a2c4d5e6f7080912"
   project_id = "699ef9c371c56d0007320543"

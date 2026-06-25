@@ -42,7 +42,7 @@ output "project_id" {
 
 ### Optional
 
-- `force_destroy` (Boolean) When true, deleting this project will cascade-destroy any instances under it that are NOT managed by this Terraform configuration. Defaults to false — destroy is refused if non-tracked instances exist.
+- `force_destroy` (Boolean) When true, deleting this project will cascade-destroy any instances under it that are NOT managed by this Terraform configuration. Defaults to false; destroy is refused if non-tracked instances exist.
 
 ### Read-Only
 

@@ -6,12 +6,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/powersync/terraform-provider-powersync/internal/client"
 )
@@ -117,8 +119,8 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Description: "Instance name. Must be unique within the project.",
 			},
 			"region": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
+				Optional: true,
+				Computed: true,
 				Description: "Region the instance runs in. One of: `eu`, `us`, `jp`, `au`, `br`. Defaults to the project's `default_region` when omitted. " +
 					"Changing this forces a new instance (the management API does not support cross-region moves).",
 				PlanModifiers: []planmodifier.String{
@@ -127,9 +129,9 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				},
 			},
 			"sync_config_content": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "Sync config YAML (bucket definitions or streams). Omit to let CI/CD or the dashboard manage the sync config independently — " +
+				Optional: true,
+				Computed: true,
+				Description: "Sync config YAML (bucket definitions or streams). Omit to let CI/CD or the dashboard manage the sync config; " +
 					"Terraform will read back whatever is currently deployed. See https://docs.powersync.com/sync/overview.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -142,12 +144,13 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
+			// No UseStateForUnknown: `provisioned` is recorded at deploy time, and the
+			// API flag it derives from is unreliable. Pinning a (possibly stale) prior
+			// value into the plan can trigger "inconsistent result after apply"; letting
+			// it plan as "(known after apply)" on changes keeps apply consistent.
 			"provisioned": schema.BoolAttribute{
 				Computed:    true,
-				Description: "Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal — use `status` or `instance_url` for that.",
-				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.UseStateForUnknown(),
-				},
+				Description: "Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal; use `status` or `instance_url` for that.",
 			},
 			"instance_url": schema.StringAttribute{
 				Computed:    true,
@@ -159,13 +162,22 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 		},
 		Blocks: map[string]schema.Block{
 			"replication_connection": schema.ListNestedBlock{
-				Description: "Source database replication connection. At least one is required for a functional instance. " +
-					"Specify either `uri` *or* the individual host/port/user/pass fields — not both.",
+				Description: "Source database replication connection. At most one connection is supported per instance. " +
+					"Specify either `uri` *or* the individual host/port/user/pass fields, not both.",
+				// PowerSync currently supports a single replication connection per instance.
+				// The API models connections as a list, so when multi-connection support
+				// lands this SizeAtMost(1) can be relaxed without a schema-shape change.
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"type": schema.StringAttribute{
 							Required:    true,
 							Description: "Source database type. One of: `postgresql`, `mongodb`, `mysql`, `mssql`. Determines which other fields apply.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("postgresql", "mongodb", "mysql", "mssql"),
+							},
 						},
 						"name": schema.StringAttribute{
 							Optional:    true,
@@ -176,7 +188,7 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 							Description: "Identifier used to reference this connection from the sync config (e.g. when an instance has multiple source DBs). Defaults to `default` server-side. See https://docs.powersync.com/sync/overview.",
 						},
 						"uri": schema.StringAttribute{
-							Optional:    true,
+							Optional: true,
 							Description: "Full connection URI (e.g. `postgresql://user:pass@host:5432/db`, `mongodb+srv://...`, `mysql://...`). " +
 								"Mutually exclusive with the host/port/username/password/database fields. Applies to all DB types.",
 						},
@@ -185,36 +197,39 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 							Description: "Database server hostname. Applies to all DB types when `uri` is not used.",
 						},
 						"port": schema.Int64Attribute{
-							Optional:    true,
+							Optional: true,
 							Description: "Database server port. Typical defaults: PostgreSQL 5432, MongoDB 27017, MySQL 3306, MSSQL 1433. " +
 								"Applies to all DB types when `uri` is not used.",
 						},
 						"username": schema.StringAttribute{
-							Optional:    true,
+							Optional: true,
 							Description: "Database user PowerSync connects as. Should be a dedicated replication user with the minimum required privileges, not an admin account. " +
 								"Applies to all DB types when `uri` is not used.",
 						},
 						"password": schema.StringAttribute{
-							Optional:    true,
-							Sensitive:   true,
+							Optional:  true,
+							Sensitive: true,
 							Description: "Password for the replication user. Stored server-side as a secret; redacted in plan/apply output. " +
 								"Applies to all DB types when `uri` is not used.",
 						},
 						"database": schema.StringAttribute{
-							Optional:    true,
-							Description: "Database name within the server (e.g. `postgres` for Supabase, the MongoDB database name, the MySQL schema name). " +
+							Optional: true,
+							Description: "Database name within the server (e.g. `postgres` for PostgreSQL, the MongoDB database name, the MySQL schema name). " +
 								"Applies to PostgreSQL, MongoDB, and MySQL.",
 						},
 						"sslmode": schema.StringAttribute{
-							Optional:    true,
+							Optional: true,
 							Description: "TLS verification mode. PowerSync accepts only `verify-full` (default; verifies cert chain + hostname) and `verify-ca` (verifies cert chain only). " +
 								"Weaker modes like `require`/`prefer`/`disable` are rejected. Applies to PostgreSQL and MySQL.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("verify-full", "verify-ca"),
+							},
 						},
 						"cacert": schema.StringAttribute{
-							Optional:    true,
+							Optional: true,
 							Description: "PEM-encoded CA certificate used to verify the server cert under `verify-full`/`verify-ca`. " +
-								"Only needed when the source DB's CA is not in PowerSync's built-in trust store — e.g. self-hosted Postgres with a private CA. " +
-								"Managed providers (Supabase, AWS RDS, Azure Postgres) are trusted by default; leave this empty for those. Applies to PostgreSQL and MySQL.",
+								"PowerSync bundles the CA for three managed PostgreSQL providers (Supabase, AWS RDS, and Azure Postgres), so leave this empty for those. " +
+								"Supply it for any other source: other Postgres hosts, self-hosted databases, and MySQL. Applies to PostgreSQL and MySQL.",
 						},
 						"client_certificate": schema.StringAttribute{
 							Optional:    true,
@@ -227,7 +242,10 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 						},
 						"post_images": schema.StringAttribute{
 							Optional:    true,
-							Description: "Change-stream `fullDocument` mode. One of: `off` (only the document key), `auto_configure` (PowerSync sets `changeStreamPreAndPostImages` on collections automatically), `read_only` (assume images are already configured upstream). MongoDB only.",
+							Description: "Change-stream `fullDocument` mode. One of: `off` (only the document key), `auto_configure` (PowerSync sets `changeStreamPreAndPostImages` on collections), `read_only` (assume images are already configured upstream). MongoDB only.",
+							Validators: []validator.String{
+								stringvalidator.OneOf("off", "auto_configure", "read_only"),
+							},
 						},
 						"schema": schema.StringAttribute{
 							Optional:    true,
@@ -238,6 +256,10 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"client_auth": schema.ListNestedBlock{
 				Description: "Client JWT authentication configuration.",
+				// A single auth configuration per instance; the API models it as a list.
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"supabase": schema.BoolAttribute{
@@ -262,6 +284,10 @@ func (r *InstanceResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			},
 			"program_version": schema.ListNestedBlock{
 				Description: "PowerSync service version constraint.",
+				// A single version constraint per instance; the API models it as a list.
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"channel": schema.StringAttribute{
@@ -365,8 +391,9 @@ func (r *InstanceResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	// Refresh status.
-	r.refreshStatus(ctx, &plan, &resp.Diagnostics)
+	// Refresh status. Record `provisioned` as observed at deploy time; it is not
+	// re-read on later refreshes (the API flag is unreliable — see refreshStatus).
+	plan.Provisioned = types.BoolValue(r.refreshStatus(ctx, &plan, &resp.Diagnostics))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -409,7 +436,13 @@ func (r *InstanceResource) Read(ctx context.Context, req resource.ReadRequest, r
 
 	// program_version: preserve whatever the user configured in state (write-through only).
 
-	r.refreshStatus(ctx, &state, &resp.Diagnostics)
+	// provisioned: preserve the value recorded at the last deploy rather than
+	// re-reading the unreliable live flag (which would show phantom drift). Seed
+	// it from the API only when state has no prior value — i.e. on import.
+	live := r.refreshStatus(ctx, &state, &resp.Diagnostics)
+	if state.Provisioned.IsNull() || state.Provisioned.IsUnknown() {
+		state.Provisioned = types.BoolValue(live)
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -455,7 +488,8 @@ func (r *InstanceResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
-	r.refreshStatus(ctx, &plan, &resp.Diagnostics)
+	// Record `provisioned` as observed at this deploy; see Create / refreshStatus.
+	plan.Provisioned = types.BoolValue(r.refreshStatus(ctx, &plan, &resp.Diagnostics))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -537,15 +571,22 @@ func (r *InstanceResource) ImportState(ctx context.Context, req resource.ImportS
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-func (r *InstanceResource) refreshStatus(ctx context.Context, state *instanceModel, diags *diag.Diagnostics) {
+// refreshStatus updates the reliable derived fields (status, instance_url) from
+// the live API and returns the API's `provisioned` flag. It deliberately does
+// NOT write `provisioned` into state: that flag flip-flops (it reports false even
+// for healthy long-lived instances — see client.InstanceStatus), so tracking it
+// live produces phantom drift and breaks apply consistency. Callers decide what
+// to do with the returned value (Create/Update record it as the deploy-time
+// value; Read uses it only to seed an imported resource).
+func (r *InstanceResource) refreshStatus(ctx context.Context, state *instanceModel, diags *diag.Diagnostics) bool {
 	status, err := r.client.GetInstanceStatus(ctx, state.OrgID.ValueString(), state.ProjectID.ValueString(), state.ID.ValueString())
 	if err != nil {
 		diags.AddWarning("Could not read instance status", err.Error())
-		return
+		return false
 	}
 	state.Status = types.StringValue(status.DeriveStatus())
-	state.Provisioned = types.BoolValue(status.Provisioned)
 	state.InstanceURL = stringOrNull(status.InstanceURL)
+	return status.Provisioned
 }
 
 func buildDeployRequest(plan instanceModel, instanceID, orgID, projectID string) client.DeployInstanceRequest {

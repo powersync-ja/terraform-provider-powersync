@@ -14,29 +14,29 @@ resource "powersync_instance" "production" {
   name       = "production"
   # region defaults to the project's region when omitted.
 
-  # Replicate from a Supabase Postgres. PowerSync ships Supabase's CA cert by
-  # default, so verify-full works without a cacert. See PowerSync's connection
-  # docs for MongoDB, MySQL, and MSSQL examples.
+  # Replicate from a source database. PowerSync supports postgresql, mongodb,
+  # mysql, and mssql. Set sslmode to verify-full; PowerSync bundles CA certs for
+  # Supabase, AWS RDS, and Azure Postgres, so no cacert is needed for those. See
+  # the "Connecting a source database" guide for the per-type fields.
   replication_connection {
     type     = "postgresql"
-    name     = "supabase-main"
-    hostname = "db.abcdefghijklmnopqrst.supabase.co"
+    name     = "primary"
+    hostname = "db.example.com"
     port     = 5432
     database = "postgres"
-    username = "powersync_role"
+    username = "powersync"
     password = var.replication_password
     sslmode  = "verify-full"
   }
 
-  # Validate client JWTs issued by Supabase Auth (asymmetric / new projects).
-  # For legacy HS256 Supabase projects, see the inline-JWKS variant in the
-  # connecting-supabase guide.
+  # Validate client JWTs by pointing PowerSync at your auth provider's JWKS
+  # endpoint.
   client_auth {
-    supabase               = true
+    jwks_uri               = "https://auth.example.com/.well-known/jwks.json"
     allow_temporary_tokens = false
   }
 
-  # Sync config — describes what each client gets and how it's partitioned.
+  # Sync config describes what each client gets and how it's partitioned.
   # https://docs.powersync.com/sync/overview
   sync_config_content = <<-YAML
     config:

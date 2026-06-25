@@ -12,9 +12,9 @@ Reads an existing PowerSync Cloud instance by ID. Useful for referencing instanc
 ## Example Usage
 
 ```terraform
-# Read an existing PowerSync instance — useful for referencing an instance that
-# was created outside of Terraform (e.g. via the dashboard) or for round-tripping
-# attributes like `instance_url` from a managed instance into outputs.
+# Read an existing PowerSync instance that was created outside of Terraform
+# (e.g. via the dashboard), or round-trip attributes like `instance_url` from a
+# managed instance into outputs.
 data "powersync_instance" "main" {
   org_id     = "64b3f8e1a2c4d5e6f7080912"
   project_id = "699ef9c371c56d0007320543"
@@ -45,7 +45,7 @@ output "instance_status" {
 - `instance_url` (String) Public endpoint URL of the instance.
 - `name` (String) Instance name.
 - `operations` (Attributes List) In-flight or recently completed deploy operations on the instance. (see [below for nested schema](#nestedatt--operations))
-- `provisioned` (Boolean) Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal — use `status` or `instance_url` for that.
+- `provisioned` (Boolean) Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal; use `status` or `instance_url` for that.
 - `region` (String) Region the instance runs in. One of: `eu`, `us`, `jp`, `au`, `br`.
 - `replication_connection` (Attributes List) Configured replication connections. Sensitive fields (password, client_private_key) are not returned by the API. (see [below for nested schema](#nestedatt--replication_connection))
 - `status` (String) Derived status: "deploying" while an operation is pending/running, "active" once the instance has a URL, otherwise "provisioning".

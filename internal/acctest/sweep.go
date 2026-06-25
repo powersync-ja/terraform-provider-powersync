@@ -92,4 +92,3 @@ func sweepProject(ctx context.Context, c *client.Client, orgID, projectID, proje
 	}
 	log.Printf("[sweep]   deleted project %s", projectID)
 }
-

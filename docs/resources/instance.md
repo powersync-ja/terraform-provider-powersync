@@ -28,29 +28,29 @@ resource "powersync_instance" "production" {
   name       = "production"
   # region defaults to the project's region when omitted.
 
-  # Replicate from a Supabase Postgres. PowerSync ships Supabase's CA cert by
-  # default, so verify-full works without a cacert. See PowerSync's connection
-  # docs for MongoDB, MySQL, and MSSQL examples.
+  # Replicate from a source database. PowerSync supports postgresql, mongodb,
+  # mysql, and mssql. Set sslmode to verify-full; PowerSync bundles CA certs for
+  # Supabase, AWS RDS, and Azure Postgres, so no cacert is needed for those. See
+  # the "Connecting a source database" guide for the per-type fields.
   replication_connection {
     type     = "postgresql"
-    name     = "supabase-main"
-    hostname = "db.abcdefghijklmnopqrst.supabase.co"
+    name     = "primary"
+    hostname = "db.example.com"
     port     = 5432
     database = "postgres"
-    username = "powersync_role"
+    username = "powersync"
     password = var.replication_password
     sslmode  = "verify-full"
   }
 
-  # Validate client JWTs issued by Supabase Auth (asymmetric / new projects).
-  # For legacy HS256 Supabase projects, see the inline-JWKS variant in the
-  # connecting-supabase guide.
+  # Validate client JWTs by pointing PowerSync at your auth provider's JWKS
+  # endpoint.
   client_auth {
-    supabase               = true
+    jwks_uri               = "https://auth.example.com/.well-known/jwks.json"
     allow_temporary_tokens = false
   }
 
-  # Sync config — describes what each client gets and how it's partitioned.
+  # Sync config describes what each client gets and how it's partitioned.
   # https://docs.powersync.com/sync/overview
   sync_config_content = <<-YAML
     config:
@@ -87,14 +87,14 @@ output "instance_url" {
 - `client_auth` (Block List) Client JWT authentication configuration. (see [below for nested schema](#nestedblock--client_auth))
 - `program_version` (Block List) PowerSync service version constraint. (see [below for nested schema](#nestedblock--program_version))
 - `region` (String) Region the instance runs in. One of: `eu`, `us`, `jp`, `au`, `br`. Defaults to the project's `default_region` when omitted. Changing this forces a new instance (the management API does not support cross-region moves).
-- `replication_connection` (Block List) Source database replication connection. At least one is required for a functional instance. Specify either `uri` *or* the individual host/port/user/pass fields — not both. (see [below for nested schema](#nestedblock--replication_connection))
-- `sync_config_content` (String) Sync config YAML (bucket definitions or streams). Omit to let CI/CD or the dashboard manage the sync config independently — Terraform will read back whatever is currently deployed. See https://docs.powersync.com/sync/overview.
+- `replication_connection` (Block List) Source database replication connection. At most one connection is supported per instance. Specify either `uri` *or* the individual host/port/user/pass fields, not both. (see [below for nested schema](#nestedblock--replication_connection))
+- `sync_config_content` (String) Sync config YAML (bucket definitions or streams). Omit to let CI/CD or the dashboard manage the sync config; Terraform will read back whatever is currently deployed. See https://docs.powersync.com/sync/overview.
 
 ### Read-Only
 
 - `id` (String) Instance ID assigned by the API.
 - `instance_url` (String) Public endpoint URL of the instance.
-- `provisioned` (Boolean) Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal — use `status` or `instance_url` for that.
+- `provisioned` (Boolean) Whether a sync config has been deployed to this instance. Despite the name, this is not a liveness signal; use `status` or `instance_url` for that.
 - `status` (String) Derived status: "deploying" while an operation is pending/running, "active" once the instance has a URL, otherwise "provisioning".
 
 <a id="nestedblock--client_auth"></a>
@@ -126,15 +126,15 @@ Required:
 
 Optional:
 
-- `cacert` (String) PEM-encoded CA certificate used to verify the server cert under `verify-full`/`verify-ca`. Only needed when the source DB's CA is not in PowerSync's built-in trust store — e.g. self-hosted Postgres with a private CA. Managed providers (Supabase, AWS RDS, Azure Postgres) are trusted by default; leave this empty for those. Applies to PostgreSQL and MySQL.
+- `cacert` (String) PEM-encoded CA certificate used to verify the server cert under `verify-full`/`verify-ca`. PowerSync bundles the CA for three managed PostgreSQL providers (Supabase, AWS RDS, and Azure Postgres), so leave this empty for those. Supply it for any other source: other Postgres hosts, self-hosted databases, and MySQL. Applies to PostgreSQL and MySQL.
 - `client_certificate` (String) PEM-encoded client certificate for mutual TLS (mTLS). Pair with `client_private_key`. Applies to PostgreSQL and MySQL.
 - `client_private_key` (String, Sensitive) PEM-encoded client private key for mutual TLS (mTLS). Pair with `client_certificate`. Stored server-side as a secret. Applies to PostgreSQL and MySQL.
-- `database` (String) Database name within the server (e.g. `postgres` for Supabase, the MongoDB database name, the MySQL schema name). Applies to PostgreSQL, MongoDB, and MySQL.
+- `database` (String) Database name within the server (e.g. `postgres` for PostgreSQL, the MongoDB database name, the MySQL schema name). Applies to PostgreSQL, MongoDB, and MySQL.
 - `hostname` (String) Database server hostname. Applies to all DB types when `uri` is not used.
 - `name` (String) Human-readable display name for this connection. Surfaced in the PowerSync dashboard; has no functional effect.
 - `password` (String, Sensitive) Password for the replication user. Stored server-side as a secret; redacted in plan/apply output. Applies to all DB types when `uri` is not used.
 - `port` (Number) Database server port. Typical defaults: PostgreSQL 5432, MongoDB 27017, MySQL 3306, MSSQL 1433. Applies to all DB types when `uri` is not used.
-- `post_images` (String) Change-stream `fullDocument` mode. One of: `off` (only the document key), `auto_configure` (PowerSync sets `changeStreamPreAndPostImages` on collections automatically), `read_only` (assume images are already configured upstream). MongoDB only.
+- `post_images` (String) Change-stream `fullDocument` mode. One of: `off` (only the document key), `auto_configure` (PowerSync sets `changeStreamPreAndPostImages` on collections), `read_only` (assume images are already configured upstream). MongoDB only.
 - `schema` (String) Default schema to use for replicated tables (e.g. `dbo`). MSSQL only.
 - `sslmode` (String) TLS verification mode. PowerSync accepts only `verify-full` (default; verifies cert chain + hostname) and `verify-ca` (verifies cert chain only). Weaker modes like `require`/`prefer`/`disable` are rejected. Applies to PostgreSQL and MySQL.
 - `tag` (String) Identifier used to reference this connection from the sync config (e.g. when an instance has multiple source DBs). Defaults to `default` server-side. See https://docs.powersync.com/sync/overview.
