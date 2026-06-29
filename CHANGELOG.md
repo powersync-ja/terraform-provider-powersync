@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3](https://github.com/powersync-ja/terraform-provider-powersync/compare/v0.1.2...v0.1.3) (2026-06-25)
+
+
+### Bug Fixes
+
+* update instance resource to handle 'provisioned' state more reliably, avoiding phantom drift by recording deploy-time values ([ccacbbb](https://github.com/powersync-ja/terraform-provider-powersync/commit/ccacbbb5ff51e2df5a90a0920ade819db85c60d6))
+* used terraform-plugin-framework-validators for some schema validation, and refine Supabase connection guide ([3cbc5fa](https://github.com/powersync-ja/terraform-provider-powersync/commit/3cbc5fae168fed665f0b761bc9c3bd908a39842b))
+
 ## [0.1.2](https://github.com/powersync-ja/terraform-provider-powersync/compare/v0.1.1...v0.1.2) (2026-06-03)
 
 
