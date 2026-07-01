@@ -15,7 +15,7 @@ This provider integrates Terraform with the PowerSync cloud, allowing you to man
 - **Review infrastructure changes in PRs**: changes to sync config, replication connections, JWKS settings show up as Terraform plan diffs and Git.
 - **Recreate environments from scratch when needed**: using version-controlled Terraform configuration as a repeatable source of truth.
 
-If you've never used Terraform before, check the [Getting Started guide](docs/guides/getting-started.md) for more information.
+If you've not used Terraform before, check the [Getting Started guide](https://registry.terraform.io/providers/powersync-ja/powersync/latest/docs/guides/getting-started) for more information.
 
 ## Quickstart
 
@@ -88,10 +88,9 @@ terraform apply
 Generated documentation is hosted on the Terraform Registry:
 
 - [Provider overview](https://registry.terraform.io/providers/powersync-ja/powersync/latest/docs)
-- [Getting Started guide](docs/guides/getting-started.md)
-- [Connecting Supabase guide](docs/guides/connecting-supabase.md)
-- [`powersync_instance` reference](docs/resources/instance.md)
-- [`powersync_project` reference](docs/resources/project.md)
+- [Getting Started guide](https://registry.terraform.io/providers/powersync-ja/powersync/latest/docs/guides/getting-started)
+- [`powersync_instance` reference](https://registry.terraform.io/providers/powersync-ja/powersync/latest/docs/resources/instance)
+- [`powersync_project` reference](https://registry.terraform.io/providers/powersync-ja/powersync/latest/docs/resources/project)
 
 ## Examples
 
@@ -102,7 +101,7 @@ Runnable examples live in [`examples/`](examples/). Each example is a self-conta
 ### Requirements
 
 - Go 1.22+
-- Terraform 1.5+
+- Terraform 1.x
 
 ### Building locally
 
