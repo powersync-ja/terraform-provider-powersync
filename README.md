@@ -101,7 +101,7 @@ Runnable examples live in [`examples/`](examples/). Each example is a self-conta
 ### Requirements
 
 - Go 1.22+
-- Terraform 1.5+
+- Terraform 1.x
 
 ### Building locally
 

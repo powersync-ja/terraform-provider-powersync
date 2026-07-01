@@ -19,7 +19,7 @@ Typical use cases:
 
 The provider authenticates against the PowerSync API using a **personal access token (PAT)**.
 
-1. Generate a PAT in the PowerSync dashboard under [Account Settings → Personal Access Tokens](https://www.powersync.com/dashboard).
+1. Generate a PAT in the PowerSync dashboard under [Account Settings → Personal Access Tokens](https://dashboard.powersync.com/account/access-tokens).
 2. Export it as an environment variable before running Terraform:
 
    ```sh
